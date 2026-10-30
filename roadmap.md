@@ -1,5 +1,5 @@
 # Roadmap
-- [x] AI goal planner: describe a goal, AI breaks it into cards for the Main Board
-- [x] Board descriptions on every board
-- [x] Boards overview: board tiles (name, description, card count); click opens the board
-- [x] Voice input in the board assistant (speak or type)
+- [ ] Assistant available on every page
+- [ ] Drag and drop cards between lists (mouse + touch)
+- [ ] Admin portal: Inactive members (left the organisation → access disabled)
+- [ ] Responsive layout on phone, tablet, desktop
