@@ -1,5 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState, type ReactNode } from "react";
+import {
+  DndContext, DragOverlay, PointerSensor, TouchSensor, KeyboardSensor, closestCorners, useDraggable, useDroppable, useSensor, useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import { statusForListName } from "@/lib/assistant-actions";
 import { ArrowLeft, CalendarDays, KanbanSquare, MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useAction, useMe, useWorkspace } from "@/store/app-store";
 import {
@@ -8,7 +13,6 @@ import {
 } from "@/services/api";
 import { Avatar, PageHeader, SampleBadge, StatusPill, EmptyState } from "@/components/shared";
 import { Button } from "@/components/ui/button";
-import { BoardAssistant } from "@/components/board-assistant";
 import { GoalPlanner } from "@/components/goal-planner";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -22,17 +26,24 @@ import type { BoardList, Task, TaskStatus } from "@/types";
 
 export const Route = createFileRoute("/_authenticated/_shell/tasks")({
   head: () => ({ meta: [{ title: "Boards — Planova" }, { name: "description", content: "Trello-style team boards with lists and cards." }] }),
+  validateSearch: (s: Record<string, unknown>): { board?: string } => (typeof s["board"] === "string" ? { board: s["board"] } : {}),
   component: BoardsPage,
 });
 
 function BoardsPage() {
   const { boards, lists, tasks, meetings } = useWorkspace();
   const me = useMe();
-  const [boardId, setBoardId] = useState<string | null>(null);
+  const boardId = Route.useSearch().board ?? null;
+  const navigate = useNavigate({ from: Route.fullPath });
+  const setBoardId = (id: string | null) => void navigate({ search: id ? { board: id } : {} });
   const [newBoard, setNewBoard] = useState<{ name: string; description: string } | null>(null);
   const [editing, setEditing] = useState<{ id?: string; draft: TaskInput } | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
-  const [dropTarget, setDropTarget] = useState<string | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } }),
+    useSensor(KeyboardSensor),
+  );
 
   const board = boards.find((b) => b.id === boardId);
   const boardLists = board ? lists.filter((l) => l.boardId === board.id) : [];
@@ -50,12 +61,29 @@ function BoardsPage() {
 
   const cardsIn = (listId: string) => tasks.filter((t) => t.listId === listId).sort((a, b) => a.position - b.position);
 
+  const statusOf = (listId: string) => statusForListName(lists.find((l) => l.id === listId)?.name ?? "");
+
+  function onDragEnd(e: DragEndEvent) {
+    setDragId(null);
+    const id = String(e.active.id);
+    const over = e.over?.id ? String(e.over.id) : null;
+    if (!over) return;
+    if (over.startsWith("list:")) {
+      const listId = over.slice(5);
+      void moveCard(id, listId, cardsIn(listId).filter((c) => c.id !== id).length);
+    } else if (over.startsWith("card:")) {
+      const target = tasks.find((t) => t.id === over.slice(5));
+      if (!target || target.id === id) return;
+      void moveCard(id, target.listId, cardsIn(target.listId).filter((c) => c.id !== id).indexOf(target));
+    }
+  }
+
   async function moveCard(taskId: string, listId: string, index: number) {
     const target = cardsIn(listId).filter((t) => t.id !== taskId);
     target.splice(index, 0, tasks.find((t) => t.id === taskId)!);
     await Promise.all(
       target.map((t, i) =>
-        t.id === taskId ? editTask.run(t.id, { listId, position: i }) : t.position !== i ? editTask.run(t.id, { position: i }) : null,
+        t.id === taskId ? editTask.run(t.id, { listId, position: i, ...(statusOf(listId) ? { status: statusOf(listId)! } : {}) }) : t.position !== i ? editTask.run(t.id, { position: i }) : null,
       ),
     );
   }
@@ -82,9 +110,8 @@ function BoardsPage() {
         title={board ? board.name : "Boards"}
         description={board ? (board.description || "Drag cards between lists. Every board is shared with the whole team.") : "Pick a board to open it. Every board is shared with the whole team."}
         actions={
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             {board && <Button variant="ghost" onClick={() => setBoardId(null)}><ArrowLeft /> All boards</Button>}
-            <BoardAssistant currentBoardId={board?.id ?? null} />
             {me.canEdit && <GoalPlanner key={board?.id ?? "all"} boards={boards} defaultBoardId={board?.id ?? null} />}
             {me.canEdit && board && (
               <DropdownMenu>
@@ -130,28 +157,21 @@ function BoardsPage() {
           })}
         </div>
       ) : (
-        <div className="-mx-4 flex flex-1 items-start gap-4 overflow-x-auto px-4 pb-4 md:-mx-8 md:px-8">
+        <DndContext sensors={sensors} collisionDetection={closestCorners}
+          onDragStart={(e) => setDragId(String(e.active.id))} onDragCancel={() => setDragId(null)} onDragEnd={onDragEnd}>
+        <div className="-mx-4 flex flex-1 snap-x items-start gap-3 overflow-x-auto px-4 pb-4 sm:gap-4 md:-mx-8 md:px-8">
           {boardLists.map((list) => {
             const cards = cardsIn(list.id);
             return (
-              <div
-                key={list.id}
-                className={cn("flex w-72 shrink-0 flex-col rounded-xl bg-muted p-2 transition-colors", dropTarget === list.id && "ring-2 ring-primary")}
-                onDragOver={(e) => { if (dragId) { e.preventDefault(); setDropTarget(list.id); } }}
-                onDragLeave={() => setDropTarget(null)}
-                onDrop={(e) => { e.preventDefault(); if (dragId) void moveCard(dragId, list.id, cards.filter((c) => c.id !== dragId).length); setDragId(null); setDropTarget(null); }}
-              >
+              <DroppableList key={list.id} id={list.id}>
                 <ListHeader list={list} count={cards.length} canEdit={me.canEdit}
                   onRename={(n) => renList.run(list.id, n)}
                   onDelete={() => { if (confirm(`Delete list “${list.name}” and its ${cards.length} card(s)?`)) void delList.run(list.id); }} />
-                <div className="flex flex-col gap-2">
-                  {cards.map((t, i) => (
-                    <TaskCard key={t.id} task={t} draggable={me.canEdit} dragging={dragId === t.id}
-                      onDragStart={() => setDragId(t.id)} onDragEnd={() => { setDragId(null); setDropTarget(null); }}
-                      onDropBefore={() => { if (dragId && dragId !== t.id) void moveCard(dragId, list.id, cards.filter((c) => c.id !== dragId).indexOf(t)); setDragId(null); setDropTarget(null); }}
-                      onOpen={() => setEditing({ id: t.id, draft: t })}
-                      index={i}
-                    />
+                <div className="flex min-h-10 flex-col gap-2">
+                  {cards.map((t) => (
+                    <DraggableCard key={t.id} id={t.id} disabled={!me.canEdit}>
+                      <TaskCard task={t} dragging={dragId === t.id} onOpen={() => setEditing({ id: t.id, draft: t })} />
+                    </DraggableCard>
                   ))}
                 </div>
                 {me.canEdit && (
@@ -159,11 +179,13 @@ function BoardsPage() {
                     <Plus className="size-4" /> Add a card
                   </button>
                 )}
-              </div>
+              </DroppableList>
             );
           })}
           {me.canEdit && <AddList onAdd={(n) => addList.run(board.id, n, boardLists.length)} />}
         </div>
+        <DragOverlay>{dragId ? (() => { const t = tasks.find((x) => x.id === dragId); return t ? <div className="w-[min(18rem,80vw)] rotate-2"><TaskCard task={t} dragging={false} onOpen={() => {}} /></div> : null; })() : null}</DragOverlay>
+        </DndContext>
       )}
 
       <Dialog open={newBoard !== null} onOpenChange={(o) => !o && setNewBoard(null)}>
@@ -219,19 +241,31 @@ function ListHeader({ list, count, canEdit, onRename, onDelete }: {
   );
 }
 
-function TaskCard({ task, draggable, dragging, onDragStart, onDragEnd, onDropBefore, onOpen }: {
-  task: Task; draggable: boolean; dragging: boolean; index: number;
-  onDragStart: () => void; onDragEnd: () => void; onDropBefore: () => void; onOpen: () => void;
-}) {
+function DroppableList({ id, children }: { id: string; children: ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({ id: `list:${id}` });
+  return (
+    <div ref={setNodeRef} className={cn("flex w-[min(18rem,82vw)] shrink-0 snap-start flex-col rounded-xl bg-muted p-2 transition-colors", isOver && "ring-2 ring-primary")}>
+      {children}
+    </div>
+  );
+}
+
+function DraggableCard({ id, disabled, children }: { id: string; disabled: boolean; children: ReactNode }) {
+  const drag = useDraggable({ id, disabled });
+  const drop = useDroppable({ id: `card:${id}` });
+  return (
+    <div ref={(n) => { drag.setNodeRef(n); drop.setNodeRef(n); }} {...drag.listeners} {...drag.attributes}
+      className={cn("touch-manipulation rounded-lg", drop.isOver && !drag.isDragging && "ring-2 ring-primary/60")}>
+      {children}
+    </div>
+  );
+}
+
+function TaskCard({ task, dragging, onOpen }: { task: Task; dragging: boolean; onOpen: () => void }) {
   return (
     <div
-      draggable={draggable}
-      onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; onDragStart(); }}
-      onDragEnd={onDragEnd}
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => { e.preventDefault(); e.stopPropagation(); onDropBefore(); }}
       onClick={onOpen}
-      className={cn("cursor-pointer rounded-lg border bg-card p-3 shadow-card transition hover:border-primary/40", dragging && "opacity-40")}
+      className={cn("cursor-pointer select-none rounded-lg border bg-card p-3 shadow-card transition hover:border-primary/40", dragging && "opacity-40")}
     >
       <p className="text-sm font-medium leading-snug">{task.title}</p>
       <div className="mt-2 flex flex-wrap items-center gap-1.5">

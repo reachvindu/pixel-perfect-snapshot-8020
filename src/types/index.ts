@@ -2,7 +2,7 @@ export type MeetingPlatform = "zoom" | "google_meet" | "teams";
 export type TaskStatus = "todo" | "in_progress" | "blocked" | "done";
 export type ProposalDecision = "pending" | "approved" | "rejected";
 export type AppRole = "admin" | "editor" | "viewer";
-export type MemberStatus = "pending" | "approved" | "rejected";
+export type MemberStatus = "pending" | "approved" | "rejected" | "inactive";
 
 export interface Meeting {
   id: string;

@@ -93,7 +93,7 @@ export function BoardAssistant({ currentBoardId }: { currentBoardId: string | nu
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="outline"><Bot /> Assistant</Button>
+        <Button variant="outline" size="sm" aria-label="Open assistant"><Bot /> <span className="hidden sm:inline">AI Assistant</span></Button>
       </SheetTrigger>
       <SheetContent className="flex w-full flex-col gap-0 p-0 sm:max-w-md">
         <SheetHeader className="border-b p-4">
