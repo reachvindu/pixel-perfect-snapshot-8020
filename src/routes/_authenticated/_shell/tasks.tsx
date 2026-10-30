@@ -148,7 +148,7 @@ function BoardsPage() {
           <div className="space-y-1.5">
             <Label htmlFor="board-name">Board name</Label>
             <Input id="board-name" autoFocus value={newBoard ?? ""} onChange={(e) => setNewBoard(e.target.value)} placeholder="Marketing launch" />
-            <p className="text-xs text-muted-foreground">Starts with To Do, In Progress and Done lists — rename or add more anytime.</p>
+            <p className="text-xs text-muted-foreground">Starts with To Do, In Progress, Hold and Completed lists — rename or add more anytime.</p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setNewBoard(null)}>Cancel</Button>

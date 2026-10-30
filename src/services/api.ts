@@ -77,7 +77,7 @@ export async function deleteMeeting(id: string) {
 export async function createBoard(name: string) {
   const board = check(await supabase.from("boards").insert({ name }).select().single());
   check(await supabase.from("board_lists").insert(
-    ["To Do", "In Progress", "Done"].map((n, i) => ({ board_id: board.id, name: n, position: i })),
+    ["To Do", "In Progress", "Hold", "Completed"].map((n, i) => ({ board_id: board.id, name: n, position: i })),
   ));
   return board.id;
 }
