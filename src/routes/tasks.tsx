@@ -75,7 +75,7 @@ function TaskBoard() {
                     <div className="mt-2 flex items-center justify-between gap-2">
                       <span className="flex items-center gap-1 text-xs text-muted-foreground"><CalendarDays className="size-3.5" />{formatDate(t.deadline)}</span>
                       <Select value={t.status} onValueChange={(v) => setTaskStatus(t.id, v as TaskStatus)}>
-                        <SelectTrigger className="h-7 w-[120px] text-xs" aria-label="Change status"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-7 w-[120px] text-xs" aria-label="Change status"><SelectValue>{STATUS_LABELS[t.status]}</SelectValue></SelectTrigger>
                         <SelectContent>{STATUS_ORDER.map((s) => <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
@@ -113,7 +113,7 @@ function TaskBoard() {
                 <div className="space-y-1.5">
                   <Label>Status</Label>
                   <Select value={d.status} onValueChange={(v) => setEditing({ ...editing!, draft: { ...d, status: v as TaskStatus } })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger><SelectValue>{STATUS_LABELS[d.status]}</SelectValue></SelectTrigger>
                     <SelectContent>{STATUS_ORDER.map((s) => <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>

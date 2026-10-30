@@ -50,7 +50,7 @@ function SettingsPage() {
           <div className="space-y-1.5">
             <Label>Preferred meeting platform</Label>
             <Select value={form.preferredPlatform} onValueChange={(v) => set("preferredPlatform", v as MeetingPlatform)}>
-              <SelectTrigger className="sm:w-64"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="sm:w-64"><SelectValue>{PLATFORM_LABELS[form.preferredPlatform]}</SelectValue></SelectTrigger>
               <SelectContent>{Object.entries(PLATFORM_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
             </Select>
           </div>

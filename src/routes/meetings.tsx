@@ -59,7 +59,7 @@ function MeetingsPage() {
             <div className="space-y-1.5">
               <Label>Platform</Label>
               <Select value={form.platform} onValueChange={(v) => setForm({ ...form, platform: v as MeetingPlatform })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger><SelectValue>{PLATFORM_LABELS[form.platform]}</SelectValue></SelectTrigger>
                 <SelectContent>
                   {Object.entries(PLATFORM_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                 </SelectContent>
