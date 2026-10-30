@@ -1,27 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useAppStore } from "@/store/app-store";
+import { useWorkspace } from "@/store/app-store";
 import { Avatar, EmptyState, PageHeader, SampleBadge, StatusPill } from "@/components/shared";
 import { getForgottenCommitments } from "@/lib/commitments";
 import { formatDate } from "@/lib/constants";
 
-export const Route = createFileRoute("/forgotten")({
-  head: () => ({
-    meta: [
-      { title: "Forgotten Commitments — FollowThru AI" },
-      { name: "description", content: "Open tasks that haven't come up in subsequent meetings." },
-      { property: "og:title", content: "Forgotten Commitments — FollowThru AI" },
-      { property: "og:description", content: "Open tasks that haven't come up in subsequent meetings." },
-    ],
-  }),
+export const Route = createFileRoute("/_authenticated/_shell/forgotten")({
+  head: () => ({ meta: [{ title: "Forgotten Commitments — FollowThru AI" }, { name: "description", content: "Open tasks not mentioned in later meetings." }] }),
   component: Forgotten,
 });
 
 function Forgotten() {
-  const { tasks, meetings } = useAppStore();
+  const { tasks, meetings } = useWorkspace();
   const items = getForgottenCommitments(tasks, meetings);
-
   return (
-    <>
+    <div className="mx-auto max-w-7xl">
       <PageHeader title="Forgotten Commitments" description="Open tasks nobody mentioned in the meetings that followed." />
       {items.length === 0 ? (
         <EmptyState>Every open task was discussed in the latest meetings.</EmptyState>
@@ -41,8 +33,8 @@ function Forgotten() {
               {items.map(({ task, lastMeeting, meetingsSince }) => (
                 <tr key={task.id}>
                   <td className="px-4 py-3 font-medium"><div className="flex items-center gap-2">{task.title}{task.isSample && <SampleBadge />}</div></td>
-                  <td className="px-4 py-3"><div className="flex items-center gap-2 whitespace-nowrap"><Avatar name={task.owner} />{task.owner}</div></td>
-                  <td className="whitespace-nowrap px-4 py-3">{formatDate(task.deadline)}</td>
+                  <td className="px-4 py-3"><div className="flex items-center gap-2 whitespace-nowrap"><Avatar name={task.owner || "?"} />{task.owner}</div></td>
+                  <td className="whitespace-nowrap px-4 py-3">{task.deadline ? formatDate(task.deadline) : "—"}</td>
                   <td className="px-4 py-3">
                     <div>{lastMeeting.title}</div>
                     <div className="text-xs text-muted-foreground">{formatDate(lastMeeting.date)} · {meetingsSince} meeting{meetingsSince === 1 ? "" : "s"} since</div>
@@ -54,6 +46,6 @@ function Forgotten() {
           </table>
         </div>
       )}
-    </>
+    </div>
   );
 }

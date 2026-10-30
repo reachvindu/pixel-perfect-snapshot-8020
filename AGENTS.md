@@ -10,6 +10,8 @@
 <!-- LOVABLE:END -->
 
 ## Architecture
-- All data access goes through `src/services/api.ts` (currently browser storage + sample data); swap it for Supabase/n8n without touching pages.
-- App state lives in `src/store/app-store.tsx` context; pages read/write only through `useAppStore`.
-- Shared domain types live in `src/types`; sample data in `src/data/sample.ts` is flagged with `isSample`.
+- All backend calls go through `src/services/api.ts`; pages use the react-query hooks in `src/store/app-store.tsx` (`useMe`, `useWorkspace`, `useAction`), never the database client directly.
+- Access control lives in the database: roles in `user_roles` (admin/editor/viewer), approval in `profiles.status`, RLS via `is_approved`/`can_edit`; admin changes go through security-definer RPCs. UI role checks are cosmetic only.
+- Signed-in pages live under `src/routes/_authenticated/_shell/` (the `_shell` layout renders the sidebar and the pending-approval screen).
+- Live transcription: browser records WAV segments (`src/lib/live-recorder.ts`) and posts them to the `/api/transcribe` server route, which verifies the bearer token and editor rights.
+- Shared domain types live in `src/types`; demo rows are flagged `is_sample` in the database.

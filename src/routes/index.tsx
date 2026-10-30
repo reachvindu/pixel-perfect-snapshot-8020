@@ -1,80 +1,64 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlarmClock, CheckCircle2, ListTodo, Video } from "lucide-react";
-import { useAppStore } from "@/store/app-store";
-import { PageHeader, PlatformPill, SampleBadge, StatCard } from "@/components/shared";
-import { getForgottenCommitments } from "@/lib/commitments";
-import { formatDate } from "@/lib/constants";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { CheckCheck, KanbanSquare, Mic } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Dashboard — FollowThru AI" },
-      { name: "description", content: "Overview of meetings, open tasks and forgotten commitments." },
-      { property: "og:title", content: "Dashboard — FollowThru AI" },
-      { property: "og:description", content: "Overview of meetings, open tasks and forgotten commitments." },
+      { title: "FollowThru AI — Meetings that turn into done work" },
+      { name: "description", content: "Capture live meeting transcripts, turn them into tasks on team boards, and catch forgotten commitments." },
+      { property: "og:title", content: "FollowThru AI — Meetings that turn into done work" },
+      { property: "og:description", content: "Capture live meeting transcripts, turn them into tasks on team boards, and catch forgotten commitments." },
     ],
   }),
-  component: Dashboard,
+  component: Landing,
 });
 
-function Dashboard() {
-  const { meetings, tasks, proposals } = useAppStore();
-  const forgotten = getForgottenCommitments(tasks, meetings);
-  const open = tasks.filter((t) => t.status !== "done").length;
-  const done = tasks.length - open;
-  const recent = [...meetings].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
-  const pending = proposals.filter((p) => p.decision === "pending").length;
+function Landing() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) navigate({ to: "/dashboard", replace: true });
+    });
+  }, [navigate]);
+
+  const features = [
+    { icon: Mic, title: "Live transcripts", text: "Record any Zoom, Meet or Teams call from your browser." },
+    { icon: KanbanSquare, title: "Team boards", text: "Trello-style boards with lists and cards for every commitment." },
+    { icon: CheckCheck, title: "Follow-through", text: "Review status updates and spot what nobody mentioned again." },
+  ];
 
   return (
-    <>
-      <PageHeader title="Dashboard" description="What your team committed to, and whether it's getting done." />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Total meetings" value={meetings.length} icon={Video} />
-        <StatCard label="Open tasks" value={open} icon={ListTodo} tone="violet" />
-        <StatCard label="Completed tasks" value={done} icon={CheckCircle2} tone="success" />
-        <StatCard label="Forgotten commitments" value={forgotten.length} icon={AlarmClock} tone="warning" />
-      </div>
-
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        <section className="rounded-xl border bg-card shadow-card lg:col-span-2">
-          <div className="flex items-center justify-between border-b px-5 py-3">
-            <h2 className="text-sm font-semibold">Recent meeting activity</h2>
-            <Link to="/meetings" className="text-xs font-medium text-primary hover:underline">View all</Link>
-          </div>
-          <ul className="divide-y">
-            {recent.map((m) => {
-              const count = tasks.filter((t) => t.sourceMeetingId === m.id).length;
-              return (
-                <li key={m.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate text-sm font-medium">{m.title}</span>
-                      {m.isSample && <SampleBadge />}
-                    </div>
-                    <span className="text-xs text-muted-foreground">{formatDate(m.date)} · {count} task{count === 1 ? "" : "s"} created</span>
-                  </div>
-                  <PlatformPill platform={m.platform} />
-                </li>
-              );
-            })}
-            {recent.length === 0 && <li className="px-5 py-8 text-center text-sm text-muted-foreground">No meetings yet.</li>}
-          </ul>
-        </section>
-
-        <section className="rounded-xl border bg-card p-5 shadow-card">
-          <h2 className="text-sm font-semibold">Needs your attention</h2>
-          <div className="mt-4 space-y-3">
-            <Link to="/follow-through" className="block rounded-lg border p-4 transition-colors hover:bg-muted">
-              <div className="text-2xl font-semibold text-violet">{pending}</div>
-              <div className="text-sm text-muted-foreground">AI status updates to review</div>
-            </Link>
-            <Link to="/forgotten" className="block rounded-lg border p-4 transition-colors hover:bg-muted">
-              <div className="text-2xl font-semibold text-warning">{forgotten.length}</div>
-              <div className="text-sm text-muted-foreground">Commitments not mentioned since</div>
-            </Link>
-          </div>
-        </section>
-      </div>
-    </>
+    <div className="min-h-screen">
+      <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
+        <div className="flex items-center gap-2 font-semibold">
+          <span className="bg-brand flex size-7 items-center justify-center rounded-md text-sm text-primary-foreground">F</span>
+          FollowThru <span className="text-brand">AI</span>
+        </div>
+        <Button asChild variant="outline"><Link to="/auth">Sign in</Link></Button>
+      </header>
+      <main className="mx-auto max-w-6xl px-6 pb-20 pt-16 text-center">
+        <h1 className="mx-auto max-w-3xl text-4xl font-semibold tracking-tight md:text-6xl">
+          Meetings that turn into <span className="text-brand">done work</span>
+        </h1>
+        <p className="mx-auto mt-5 max-w-xl text-muted-foreground">
+          FollowThru captures what your team promised, tracks it across recurring meetings, and flags what slipped.
+        </p>
+        <div className="mt-8 flex justify-center gap-3">
+          <Button asChild size="lg"><Link to="/auth">Get started</Link></Button>
+        </div>
+        <div className="mt-20 grid gap-4 text-left md:grid-cols-3">
+          {features.map((f) => (
+            <div key={f.title} className="rounded-xl border bg-card p-6 shadow-card">
+              <f.icon className="size-5 text-primary" />
+              <h3 className="mt-4 font-semibold">{f.title}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{f.text}</p>
+            </div>
+          ))}
+        </div>
+      </main>
+    </div>
   );
 }

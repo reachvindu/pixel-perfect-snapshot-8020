@@ -1,29 +1,44 @@
 export type MeetingPlatform = "zoom" | "google_meet" | "teams";
+export type TaskStatus = "todo" | "in_progress" | "blocked" | "done";
+export type ProposalDecision = "pending" | "approved" | "rejected";
+export type AppRole = "admin" | "editor" | "viewer";
+export type MemberStatus = "pending" | "approved" | "rejected";
 
 export interface Meeting {
   id: string;
   title: string;
-  date: string; // ISO date (YYYY-MM-DD)
+  date: string; // YYYY-MM-DD
   link: string;
   platform: MeetingPlatform;
   transcript: string;
-  isSample?: boolean;
+  isSample: boolean;
 }
 
-export type TaskStatus = "todo" | "in_progress" | "blocked" | "done";
+export interface Board {
+  id: string;
+  name: string;
+  isSample: boolean;
+}
+
+export interface BoardList {
+  id: string;
+  boardId: string;
+  name: string;
+  position: number;
+}
 
 export interface Task {
   id: string;
+  listId: string;
   title: string;
   owner: string;
-  deadline: string; // ISO date
+  deadline: string | null;
   status: TaskStatus;
-  sourceMeetingId: string;
-  lastMentionedMeetingId: string;
-  isSample?: boolean;
+  position: number;
+  sourceMeetingId: string | null;
+  lastMentionedMeetingId: string | null;
+  isSample: boolean;
 }
-
-export type ProposalDecision = "pending" | "approved" | "rejected";
 
 export interface AIProposal {
   id: string;
@@ -31,17 +46,17 @@ export interface AIProposal {
   meetingId: string;
   currentStatus: TaskStatus;
   proposedStatus: TaskStatus;
-  evidence: string; // transcript excerpt
-  confidence: number; // 0-1
+  evidence: string;
+  confidence: number;
   decision: ProposalDecision;
-  isSample?: boolean;
+  isSample: boolean;
 }
 
-export interface UserProfile {
-  name: string;
+export interface Member {
+  id: string;
   email: string;
-  role: string;
-  preferredPlatform: MeetingPlatform;
-  autoExtractTasks: boolean;
-  notifyForgotten: boolean;
+  fullName: string;
+  status: MemberStatus;
+  role: AppRole;
+  createdAt: string;
 }

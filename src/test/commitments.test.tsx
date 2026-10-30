@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest";
 import { getForgottenCommitments } from "@/lib/commitments";
 import type { Meeting, Task } from "@/types";
 
-const m = (id: string, date: string): Meeting => ({ id, date, title: id, link: "", platform: "zoom", transcript: "" });
+const m = (id: string, date: string): Meeting => ({ id, date, title: id, link: "", platform: "zoom", transcript: "", isSample: false });
 const t = (id: string, last: string, status: Task["status"] = "todo"): Task => ({
-  id, title: id, owner: "A", deadline: "2026-01-01", status, sourceMeetingId: last, lastMentionedMeetingId: last,
+  id, listId: "l", position: 0, title: id, owner: "A", deadline: "2026-01-01", status,
+  sourceMeetingId: last, lastMentionedMeetingId: last, isSample: false,
 });
 
 describe("getForgottenCommitments", () => {

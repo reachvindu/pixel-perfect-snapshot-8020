@@ -1,15 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/shared";
 
-export const Route = createFileRoute("/integrations")({
-  head: () => ({
-    meta: [
-      { title: "Integrations — FollowThru AI" },
-      { name: "description", content: "Zoom, Microsoft Teams and Google Meet connections." },
-      { property: "og:title", content: "Integrations — FollowThru AI" },
-      { property: "og:description", content: "Zoom, Microsoft Teams and Google Meet connections." },
-    ],
-  }),
+export const Route = createFileRoute("/_authenticated/_shell/integrations")({
+  head: () => ({ meta: [{ title: "Integrations — FollowThru AI" }, { name: "description", content: "Zoom, Teams and Google Meet connections." }] }),
   component: IntegrationsPage,
 });
 
@@ -21,8 +14,8 @@ const items = [
 
 function IntegrationsPage() {
   return (
-    <>
-      <PageHeader title="Integrations" description="Account connections are not available yet. Paste transcripts on the Meetings page for now." />
+    <div className="mx-auto max-w-7xl">
+      <PageHeader title="Integrations" description="Account connections aren't available yet. Use live recording on the Meetings page meanwhile." />
       <div className="grid gap-4 md:grid-cols-3">
         {items.map((i) => (
           <div key={i.name} className="flex flex-col rounded-xl border bg-card p-5 shadow-card">
@@ -36,6 +29,6 @@ function IntegrationsPage() {
           </div>
         ))}
       </div>
-    </>
+    </div>
   );
 }
