@@ -299,7 +299,7 @@ export type Database = {
     Enums: {
       app_role: "admin" | "editor" | "viewer"
       meeting_platform: "zoom" | "google_meet" | "teams"
-      member_status: "pending" | "approved" | "rejected"
+      member_status: "pending" | "approved" | "rejected" | "inactive"
       proposal_decision: "pending" | "approved" | "rejected"
       task_status: "todo" | "in_progress" | "blocked" | "done"
     }
@@ -431,7 +431,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "editor", "viewer"],
       meeting_platform: ["zoom", "google_meet", "teams"],
-      member_status: ["pending", "approved", "rejected"],
+      member_status: ["pending", "approved", "rejected", "inactive"],
       proposal_decision: ["pending", "approved", "rejected"],
       task_status: ["todo", "in_progress", "blocked", "done"],
     },

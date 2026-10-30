@@ -15,6 +15,13 @@
       "when": 1793375353322,
       "tag": "0001_board_descriptions",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793375860586,
+      "tag": "0002_member_inactive_status",
+      "breakpoints": true
     }
   ]
 }
