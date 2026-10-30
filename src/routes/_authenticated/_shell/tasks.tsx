@@ -8,6 +8,7 @@ import {
 } from "@/services/api";
 import { Avatar, PageHeader, SampleBadge, StatusPill, EmptyState } from "@/components/shared";
 import { Button } from "@/components/ui/button";
+import { BoardAssistant } from "@/components/board-assistant";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -79,6 +80,7 @@ function BoardsPage() {
         description="Drag cards between lists. Every board is shared with the whole team."
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            <BoardAssistant currentBoardId={board?.id ?? null} />
             {boards.length > 0 && (
               <Select value={board?.id ?? ""} onValueChange={setBoardId}>
                 <SelectTrigger className="w-[200px]" aria-label="Choose board"><SelectValue>{board?.name}</SelectValue></SelectTrigger>

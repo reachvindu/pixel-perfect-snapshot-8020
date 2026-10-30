@@ -3,6 +3,8 @@
  * Pages never talk to the database directly; they use the hooks in src/store.
  */
 import { supabase } from "@/integrations/supabase/client";
+import type { AssistantAction, AssistantResult } from "@/lib/assistant-actions";
+import { sameName, statusForListName } from "@/lib/assistant-actions";
 import type { TablesUpdate } from "@/integrations/supabase/types";
 import type {
   AIProposal, AppRole, Board, BoardList, Meeting, Member, MemberStatus, Task, TaskStatus,
@@ -160,8 +162,6 @@ export async function transcribeChunk(file: File): Promise<string> {
 }
 
 /* ---------- board assistant ---------- */
-import type { AssistantAction, AssistantResult } from "@/lib/assistant-actions";
-import { sameName, statusForListName } from "@/lib/assistant-actions";
 
 export async function askAssistant(
   messages: { role: "user" | "assistant"; content: string }[],
