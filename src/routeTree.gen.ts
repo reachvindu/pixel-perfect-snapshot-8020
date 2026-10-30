@@ -10,33 +10,168 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedShellRouteImport } from './routes/_authenticated/_shell'
+import { Route as ApiTranscribeRouteImport } from './routes/api/transcribe'
+import { Route as AuthenticatedShellAdminRouteImport } from './routes/_authenticated/_shell/admin'
+import { Route as AuthenticatedShellDashboardRouteImport } from './routes/_authenticated/_shell/dashboard'
+import { Route as AuthenticatedShellFollowThroughRouteImport } from './routes/_authenticated/_shell/follow-through'
+import { Route as AuthenticatedShellForgottenRouteImport } from './routes/_authenticated/_shell/forgotten'
+import { Route as AuthenticatedShellIntegrationsRouteImport } from './routes/_authenticated/_shell/integrations'
+import { Route as AuthenticatedShellMeetingsRouteImport } from './routes/_authenticated/_shell/meetings'
+import { Route as AuthenticatedShellSettingsRouteImport } from './routes/_authenticated/_shell/settings'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedShellRoute = AuthenticatedShellRouteImport.update({
+  id: '/_shell',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const ApiTranscribeRoute = ApiTranscribeRouteImport.update({
+  id: '/api/transcribe',
+  path: '/api/transcribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedShellAdminRoute = AuthenticatedShellAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedShellRoute,
+} as any)
+const AuthenticatedShellDashboardRoute =
+  AuthenticatedShellDashboardRouteImport.update({
+    id: '/dashboard',
+    path: '/dashboard',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
+const AuthenticatedShellFollowThroughRoute =
+  AuthenticatedShellFollowThroughRouteImport.update({
+    id: '/follow-through',
+    path: '/follow-through',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
+const AuthenticatedShellForgottenRoute =
+  AuthenticatedShellForgottenRouteImport.update({
+    id: '/forgotten',
+    path: '/forgotten',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
+const AuthenticatedShellIntegrationsRoute =
+  AuthenticatedShellIntegrationsRouteImport.update({
+    id: '/integrations',
+    path: '/integrations',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
+const AuthenticatedShellMeetingsRoute =
+  AuthenticatedShellMeetingsRouteImport.update({
+    id: '/meetings',
+    path: '/meetings',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
+const AuthenticatedShellSettingsRoute =
+  AuthenticatedShellSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/api/transcribe': typeof ApiTranscribeRoute
+  '/admin': typeof AuthenticatedShellAdminRoute
+  '/dashboard': typeof AuthenticatedShellDashboardRoute
+  '/follow-through': typeof AuthenticatedShellFollowThroughRoute
+  '/forgotten': typeof AuthenticatedShellForgottenRoute
+  '/integrations': typeof AuthenticatedShellIntegrationsRoute
+  '/meetings': typeof AuthenticatedShellMeetingsRoute
+  '/settings': typeof AuthenticatedShellSettingsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/api/transcribe': typeof ApiTranscribeRoute
+  '/admin': typeof AuthenticatedShellAdminRoute
+  '/dashboard': typeof AuthenticatedShellDashboardRoute
+  '/follow-through': typeof AuthenticatedShellFollowThroughRoute
+  '/forgotten': typeof AuthenticatedShellForgottenRoute
+  '/integrations': typeof AuthenticatedShellIntegrationsRoute
+  '/meetings': typeof AuthenticatedShellMeetingsRoute
+  '/settings': typeof AuthenticatedShellSettingsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/_authenticated/_shell': typeof AuthenticatedShellRouteWithChildren
+  '/api/transcribe': typeof ApiTranscribeRoute
+  '/_authenticated/_shell/admin': typeof AuthenticatedShellAdminRoute
+  '/_authenticated/_shell/dashboard': typeof AuthenticatedShellDashboardRoute
+  '/_authenticated/_shell/follow-through': typeof AuthenticatedShellFollowThroughRoute
+  '/_authenticated/_shell/forgotten': typeof AuthenticatedShellForgottenRoute
+  '/_authenticated/_shell/integrations': typeof AuthenticatedShellIntegrationsRoute
+  '/_authenticated/_shell/meetings': typeof AuthenticatedShellMeetingsRoute
+  '/_authenticated/_shell/settings': typeof AuthenticatedShellSettingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/api/transcribe'
+    | '/admin'
+    | '/dashboard'
+    | '/follow-through'
+    | '/forgotten'
+    | '/integrations'
+    | '/meetings'
+    | '/settings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/api/transcribe'
+    | '/admin'
+    | '/dashboard'
+    | '/follow-through'
+    | '/forgotten'
+    | '/integrations'
+    | '/meetings'
+    | '/settings'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/_shell'
+    | '/api/transcribe'
+    | '/_authenticated/_shell/admin'
+    | '/_authenticated/_shell/dashboard'
+    | '/_authenticated/_shell/follow-through'
+    | '/_authenticated/_shell/forgotten'
+    | '/_authenticated/_shell/integrations'
+    | '/_authenticated/_shell/meetings'
+    | '/_authenticated/_shell/settings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
+  ApiTranscribeRoute: typeof ApiTranscribeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +183,125 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/_shell': {
+      id: '/_authenticated/_shell'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedShellRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/transcribe': {
+      id: '/api/transcribe'
+      path: '/api/transcribe'
+      fullPath: '/api/transcribe'
+      preLoaderRoute: typeof ApiTranscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/_shell/admin': {
+      id: '/_authenticated/_shell/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedShellAdminRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/dashboard': {
+      id: '/_authenticated/_shell/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedShellDashboardRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/follow-through': {
+      id: '/_authenticated/_shell/follow-through'
+      path: '/follow-through'
+      fullPath: '/follow-through'
+      preLoaderRoute: typeof AuthenticatedShellFollowThroughRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/forgotten': {
+      id: '/_authenticated/_shell/forgotten'
+      path: '/forgotten'
+      fullPath: '/forgotten'
+      preLoaderRoute: typeof AuthenticatedShellForgottenRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/integrations': {
+      id: '/_authenticated/_shell/integrations'
+      path: '/integrations'
+      fullPath: '/integrations'
+      preLoaderRoute: typeof AuthenticatedShellIntegrationsRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/meetings': {
+      id: '/_authenticated/_shell/meetings'
+      path: '/meetings'
+      fullPath: '/meetings'
+      preLoaderRoute: typeof AuthenticatedShellMeetingsRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/settings': {
+      id: '/_authenticated/_shell/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedShellSettingsRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
   }
 }
 
+interface AuthenticatedShellRouteChildren {
+  AuthenticatedShellAdminRoute: typeof AuthenticatedShellAdminRoute
+  AuthenticatedShellDashboardRoute: typeof AuthenticatedShellDashboardRoute
+  AuthenticatedShellFollowThroughRoute: typeof AuthenticatedShellFollowThroughRoute
+  AuthenticatedShellForgottenRoute: typeof AuthenticatedShellForgottenRoute
+  AuthenticatedShellIntegrationsRoute: typeof AuthenticatedShellIntegrationsRoute
+  AuthenticatedShellMeetingsRoute: typeof AuthenticatedShellMeetingsRoute
+  AuthenticatedShellSettingsRoute: typeof AuthenticatedShellSettingsRoute
+}
+
+const AuthenticatedShellRouteChildren: AuthenticatedShellRouteChildren = {
+  AuthenticatedShellAdminRoute: AuthenticatedShellAdminRoute,
+  AuthenticatedShellDashboardRoute: AuthenticatedShellDashboardRoute,
+  AuthenticatedShellFollowThroughRoute: AuthenticatedShellFollowThroughRoute,
+  AuthenticatedShellForgottenRoute: AuthenticatedShellForgottenRoute,
+  AuthenticatedShellIntegrationsRoute: AuthenticatedShellIntegrationsRoute,
+  AuthenticatedShellMeetingsRoute: AuthenticatedShellMeetingsRoute,
+  AuthenticatedShellSettingsRoute: AuthenticatedShellSettingsRoute,
+}
+
+const AuthenticatedShellRouteWithChildren =
+  AuthenticatedShellRoute._addFileChildren(AuthenticatedShellRouteChildren)
+
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedShellRoute: typeof AuthenticatedShellRouteWithChildren
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedShellRoute: AuthenticatedShellRouteWithChildren,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
+  ApiTranscribeRoute: ApiTranscribeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
