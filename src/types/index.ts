@@ -17,6 +17,7 @@ export interface Meeting {
 export interface Board {
   id: string;
   name: string;
+  description: string;
   isSample: boolean;
 }
 

@@ -50,7 +50,7 @@ export async function fetchWorkspace() {
   const meetings: Meeting[] = check(m).map((r) => ({
     id: r.id, title: r.title, date: r.date, link: r.link, platform: r.platform, transcript: r.transcript, isSample: r.is_sample,
   }));
-  const boards: Board[] = check(b).map((r) => ({ id: r.id, name: r.name, isSample: r.is_sample }));
+  const boards: Board[] = check(b).map((r) => ({ id: r.id, name: r.name, description: r.description, isSample: r.is_sample }));
   const lists: BoardList[] = check(l).map((r) => ({ id: r.id, boardId: r.board_id, name: r.name, position: r.position }));
   const tasks: Task[] = check(t).map((r) => ({
     id: r.id, listId: r.list_id, title: r.title, owner: r.owner, deadline: r.deadline, status: r.status,
@@ -76,8 +76,8 @@ export async function deleteMeeting(id: string) {
 }
 
 /* boards & lists */
-export async function createBoard(name: string) {
-  const board = check(await supabase.from("boards").insert({ name }).select().single());
+export async function createBoard(name: string, description = "") {
+  const board = check(await supabase.from("boards").insert({ name, description }).select().single());
   check(await supabase.from("board_lists").insert(
     ["To Do", "In Progress", "Hold", "Completed"].map((n, i) => ({ board_id: board.id, name: n, position: i })),
   ));
@@ -85,6 +85,9 @@ export async function createBoard(name: string) {
 }
 export async function renameBoard(id: string, name: string) {
   check(await supabase.from("boards").update({ name }).eq("id", id));
+}
+export async function updateBoardDescription(id: string, description: string) {
+  check(await supabase.from("boards").update({ description }).eq("id", id));
 }
 export async function deleteBoard(id: string) {
   check(await supabase.from("boards").delete().eq("id", id));
@@ -167,12 +170,7 @@ export async function askAssistant(
   messages: { role: "user" | "assistant"; content: string }[],
   currentBoardId: string | null,
 ): Promise<AssistantResult> {
-  const ws = await fetchWorkspace();
-  const workspace = {
-    boards: ws.boards.map((b) => ({ id: b.id, name: b.name })),
-    lists: ws.lists.map((l) => ({ id: l.id, boardId: l.boardId, name: l.name, position: l.position })),
-    tasks: ws.tasks.map((t) => ({ id: t.id, listId: t.listId, title: t.title, owner: t.owner, deadline: t.deadline, status: t.status })),
-  };
+  const workspace = await assistantSnapshot();
   const { data } = await supabase.auth.getSession();
   const res = await fetch("/api/assistant", {
     method: "POST",
@@ -182,6 +180,43 @@ export async function askAssistant(
   const body = (await res.json().catch(() => ({}))) as Partial<AssistantResult> & { error?: string };
   if (!res.ok) throw new Error(body.error ?? `Assistant failed (${res.status})`);
   return { reply: body.reply ?? "", actions: body.actions ?? [] };
+}
+
+async function assistantSnapshot() {
+  const ws = await fetchWorkspace();
+  return {
+    boards: ws.boards.map((b) => ({ id: b.id, name: b.name, description: b.description })),
+    lists: ws.lists.map((l) => ({ id: l.id, boardId: l.boardId, name: l.name, position: l.position })),
+    tasks: ws.tasks.map((t) => ({ id: t.id, listId: t.listId, title: t.title, owner: t.owner, deadline: t.deadline, status: t.status })),
+  };
+}
+
+export type PlannedTask = { title: string; owner: string | null; deadline: string | null };
+
+/** Asks the AI to break a goal into cards for the given board (not saved yet). */
+export async function planGoal(goal: string, boardId: string): Promise<{ summary: string; tasks: PlannedTask[] }> {
+  const workspace = await assistantSnapshot();
+  const { data } = await supabase.auth.getSession();
+  const res = await fetch("/api/assistant", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session?.access_token ?? ""}` },
+    body: JSON.stringify({ mode: "plan", messages: [{ role: "user", content: goal }], workspace, currentBoardId: boardId }),
+  });
+  const body = (await res.json().catch(() => ({}))) as { summary?: string; tasks?: PlannedTask[]; error?: string };
+  if (!res.ok) throw new Error(body.error ?? `Planning failed (${res.status})`);
+  return { summary: body.summary ?? "", tasks: body.tasks ?? [] };
+}
+
+/** Adds the chosen planned cards to the board's first (To Do) list. */
+export async function addPlannedTasks(boardId: string, tasks: PlannedTask[]) {
+  const ws = await fetchWorkspace();
+  const list = ws.lists.filter((l) => l.boardId === boardId).sort((a, b) => a.position - b.position)[0];
+  if (!list) throw new Error("This board has no lists yet.");
+  const start = ws.tasks.filter((t) => t.listId === list.id).length;
+  check(await supabase.from("tasks").insert(tasks.map((t, i) => ({
+    list_id: list.id, title: t.title, owner: t.owner ?? "", deadline: t.deadline, status: statusForListName(list.name) ?? "todo", position: start + i,
+  }))));
+  return list.name;
 }
 
 /** Runs the assistant's actions in order against the real data; returns a line per action. */
