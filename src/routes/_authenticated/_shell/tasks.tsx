@@ -247,7 +247,7 @@ function TaskDialog({ editing, lists, meetings, canEdit, onChange, onClose, onSa
   onChange: (d: TaskInput) => void;
   onClose: () => void;
   onSave: () => void;
-  onDelete?: () => void;
+  onDelete?: (() => void) | undefined;
 }) {
   const d = editing?.draft;
   const valid = d && d.title.trim();
