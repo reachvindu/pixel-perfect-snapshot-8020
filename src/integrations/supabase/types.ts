@@ -103,18 +103,21 @@ export type Database = {
       boards: {
         Row: {
           created_at: string
+          description: string
           id: string
           is_sample: boolean
           name: string
         }
         Insert: {
           created_at?: string
+          description?: string
           id?: string
           is_sample?: boolean
           name: string
         }
         Update: {
           created_at?: string
+          description?: string
           id?: string
           is_sample?: boolean
           name?: string

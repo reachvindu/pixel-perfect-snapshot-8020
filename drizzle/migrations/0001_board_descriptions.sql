@@ -1,0 +1,2 @@
+ALTER TABLE public.boards ADD COLUMN IF NOT EXISTS description text NOT NULL DEFAULT '';
+UPDATE public.boards SET description = 'Our team''s main board for day-to-day work.' WHERE name = 'Main Board' AND description = '';

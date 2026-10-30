@@ -60,6 +60,83 @@ Action rules:
 - If readOnly is true, never return actions; explain that only editors and admins can make changes.
 - reply: one or two friendly sentences describing what you did (past tense) or the answer. Plain text, no markdown.`;
 
+const PLAN_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["summary", "tasks"],
+  properties: {
+    summary: { type: "string" },
+    tasks: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["title", "owner", "deadline"],
+        properties: { title: { type: "string" }, owner: nullableString, deadline: nullableString },
+      },
+    },
+  },
+};
+
+const PLAN_INSTRUCTIONS = `You are Planova's planning assistant. The user describes a goal. Break it into 4-10 concrete, actionable task cards, in the order they should be done.
+- Each title starts with a verb and is under 80 characters ("Draft launch email", not "Email").
+- owner: only if the user named who should do it (or a teammate already appears as an owner in the workspace and clearly fits); otherwise null.
+- deadline: YYYY-MM-DD only if the user gave a timeframe; spread dates sensibly up to that date, starting after today. Otherwise null.
+- Don't duplicate cards already on the board.
+- summary: one short sentence describing the plan. Plain text.`;
+
+async function callModel(apiKey: string, instructions: string, input: unknown[], name: string, schema: unknown, signal: AbortSignal):
+  Promise<{ ok: true; status: 200; value: unknown } | { ok: false; status: number; error: string }> {
+  const upstream = await fetch("https://ai.gateway.lovable.dev/v1/responses", {
+    method: "POST",
+    signal,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+      "Lovable-API-Key": apiKey,
+      "X-Lovable-AIG-SDK": "fetch",
+    },
+    body: JSON.stringify({
+      model: MODEL, instructions, input, stream: true, store: false,
+      reasoning: { effort: "low" },
+      text: { format: { type: "json_schema", name, strict: true, schema } },
+    }),
+  }).catch(() => null);
+  if (!upstream) return { ok: false, status: 502, error: "Couldn't reach the assistant. Try again." };
+  if (!upstream.ok || !upstream.body) {
+    const t = await upstream.text().catch(() => "");
+    let msg = "The assistant is unavailable right now.";
+    try { const j = JSON.parse(t); msg = j?.error?.message ?? j?.message ?? msg; } catch { /* keep default */ }
+    if (upstream.status === 429) msg = "Too many requests — please wait a moment and try again.";
+    return { ok: false, status: upstream.status, error: msg };
+  }
+  const reader = upstream.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "", text = "", failed: string | null = null;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    let idx;
+    while ((idx = buf.indexOf("\n")) >= 0) {
+      const line = buf.slice(0, idx).trim();
+      buf = buf.slice(idx + 1);
+      if (!line.startsWith("data:")) continue;
+      const data = line.slice(5).trim();
+      if (!data || data === "[DONE]") continue;
+      try {
+        const ev = JSON.parse(data);
+        if (ev.type === "response.output_text.delta") text += ev.delta ?? "";
+        else if (ev.type === "response.failed" || ev.type === "error") failed = ev.response?.error?.message ?? ev.message ?? "The assistant failed.";
+        else if (ev.type === "response.refusal.delta") failed = "The assistant declined this request.";
+      } catch { /* ignore partial lines */ }
+    }
+  }
+  if (failed) return { ok: false, status: 502, error: failed };
+  try { return { ok: true, status: 200, value: JSON.parse(text) }; }
+  catch { return { ok: false, status: 502, error: "The assistant gave an unreadable answer. Try rephrasing." }; }
+}
+
 type ChatMsg = { role: "user" | "assistant"; content: string };
 
 export const Route = createFileRoute("/api/assistant")({
@@ -89,7 +166,7 @@ export const Route = createFileRoute("/api/assistant")({
         if (!approved) return json(403, { error: "Your account is waiting for admin approval." });
         const { data: canEdit } = await supabase.rpc("can_edit", { _user_id: userData.user.id });
 
-        let body: { messages?: ChatMsg[]; workspace?: unknown; currentBoardId?: string | null };
+        let body: { messages?: ChatMsg[]; workspace?: unknown; currentBoardId?: string | null; mode?: "chat" | "plan" };
         try { body = await request.json(); } catch { return json(400, { error: "Invalid request." }); }
         const messages = (body.messages ?? [])
           .filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
@@ -107,66 +184,17 @@ export const Route = createFileRoute("/api/assistant")({
           workspace: body.workspace,
         }).slice(0, 120_000);
 
-        const upstream = await fetch("https://ai.gateway.lovable.dev/v1/responses", {
-          method: "POST",
-          signal: request.signal,
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-            "Lovable-API-Key": apiKey,
-            "X-Lovable-AIG-SDK": "fetch",
-          },
-          body: JSON.stringify({
-            model: MODEL,
-            instructions: INSTRUCTIONS,
-            input: [{ role: "developer", content: `Current state:\n${context}` }, ...messages],
-            stream: true,
-            store: false,
-            reasoning: { effort: "low" },
-            text: { format: { type: "json_schema", name: "board_actions", strict: true, schema: SCHEMA } },
-          }),
-        }).catch(() => null);
-        if (!upstream) return json(502, { error: "Couldn't reach the assistant. Try again." });
-        if (!upstream.ok || !upstream.body) {
-          const t = await upstream.text().catch(() => "");
-          let msg = "The assistant is unavailable right now.";
-          try { msg = JSON.parse(t)?.error?.message ?? JSON.parse(t)?.message ?? msg; } catch { /* keep default */ }
-          if (upstream.status === 429) msg = "Too many requests — please wait a moment and try again.";
-          if (upstream.status === 402) msg = msg || "AI credits have run out.";
-          return json(upstream.status, { error: msg });
+        const input = [{ role: "developer", content: `Current state:\n${context}` }, ...messages];
+        if (body.mode === "plan") {
+          if (!canEdit) return json(403, { error: "Only editors and admins can add cards." });
+          const r = await callModel(apiKey, PLAN_INSTRUCTIONS, input, "goal_plan", PLAN_SCHEMA, request.signal);
+          return json(r.status, r.ok ? r.value : { error: r.error });
         }
-
-        // Consume the SSE stream and collect the output text
-        const reader = upstream.body.getReader();
-        const decoder = new TextDecoder();
-        let buf = "", text = "", failed: string | null = null;
-        for (;;) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buf += decoder.decode(value, { stream: true });
-          let idx;
-          while ((idx = buf.indexOf("\n")) >= 0) {
-            const line = buf.slice(0, idx).trim();
-            buf = buf.slice(idx + 1);
-            if (!line.startsWith("data:")) continue;
-            const data = line.slice(5).trim();
-            if (!data || data === "[DONE]") continue;
-            try {
-              const ev = JSON.parse(data);
-              if (ev.type === "response.output_text.delta") text += ev.delta ?? "";
-              else if (ev.type === "response.failed" || ev.type === "error") failed = ev.response?.error?.message ?? ev.message ?? "The assistant failed.";
-              else if (ev.type === "response.refusal.delta") failed = "The assistant declined this request.";
-            } catch { /* ignore partial lines */ }
-          }
-        }
-        if (failed) return json(502, { error: failed });
-        try {
-          const parsed = JSON.parse(text);
-          if (!canEdit) parsed.actions = [];
-          return json(200, parsed);
-        } catch {
-          return json(502, { error: "The assistant gave an unreadable answer. Try rephrasing." });
-        }
+        const r = await callModel(apiKey, INSTRUCTIONS, input, "board_actions", SCHEMA, request.signal);
+        if (!r.ok) return json(r.status, { error: r.error });
+        const parsed = r.value as { actions: unknown[] };
+        if (!canEdit) parsed.actions = [];
+        return json(200, parsed);
       },
     },
   },
