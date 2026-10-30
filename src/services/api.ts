@@ -3,6 +3,8 @@
  * Pages never talk to the database directly; they use the hooks in src/store.
  */
 import { supabase } from "@/integrations/supabase/client";
+import type { AssistantAction, AssistantResult } from "@/lib/assistant-actions";
+import { sameName, statusForListName } from "@/lib/assistant-actions";
 import type { TablesUpdate } from "@/integrations/supabase/types";
 import type {
   AIProposal, AppRole, Board, BoardList, Meeting, Member, MemberStatus, Task, TaskStatus,
@@ -157,4 +159,134 @@ export async function transcribeChunk(file: File): Promise<string> {
   const body = (await res.json().catch(() => ({}))) as { text?: string; error?: string };
   if (!res.ok) throw new Error(body.error ?? `Transcription failed (${res.status})`);
   return body.text ?? "";
+}
+
+/* ---------- board assistant ---------- */
+
+export async function askAssistant(
+  messages: { role: "user" | "assistant"; content: string }[],
+  currentBoardId: string | null,
+): Promise<AssistantResult> {
+  const ws = await fetchWorkspace();
+  const workspace = {
+    boards: ws.boards.map((b) => ({ id: b.id, name: b.name })),
+    lists: ws.lists.map((l) => ({ id: l.id, boardId: l.boardId, name: l.name, position: l.position })),
+    tasks: ws.tasks.map((t) => ({ id: t.id, listId: t.listId, title: t.title, owner: t.owner, deadline: t.deadline, status: t.status })),
+  };
+  const { data } = await supabase.auth.getSession();
+  const res = await fetch("/api/assistant", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session?.access_token ?? ""}` },
+    body: JSON.stringify({ messages, workspace, currentBoardId }),
+  });
+  const body = (await res.json().catch(() => ({}))) as Partial<AssistantResult> & { error?: string };
+  if (!res.ok) throw new Error(body.error ?? `Assistant failed (${res.status})`);
+  return { reply: body.reply ?? "", actions: body.actions ?? [] };
+}
+
+/** Runs the assistant's actions in order against the real data; returns a line per action. */
+export async function runAssistantActions(actions: AssistantAction[]): Promise<string[]> {
+  const log: string[] = [];
+  let ws = await fetchWorkspace();
+  const board = (a: AssistantAction) =>
+    ws.boards.find((b) => b.id === a.boardId) ?? (a.boardName ? ws.boards.find((b) => sameName(b.name, a.boardName!)) : undefined);
+  const list = (a: AssistantAction) => {
+    const byId = ws.lists.find((l) => l.id === a.listId);
+    if (byId) return byId;
+    if (!a.listName) return undefined;
+    const b = board(a);
+    return ws.lists.find((l) => sameName(l.name, a.listName!) && (!b || l.boardId === b.id));
+  };
+  const task = (a: AssistantAction) => ws.tasks.find((t) => t.id === a.taskId);
+  const fail = (msg: string) => { log.push(`✗ ${msg}`); };
+
+  for (const a of actions) {
+    try {
+      switch (a.type) {
+        case "move_task": {
+          const t = task(a), l = list(a);
+          if (!t || !l) { fail("Couldn't find that card or list"); break; }
+          const status = a.status ?? statusForListName(l.name) ?? undefined;
+          await updateTask(t.id, { listId: l.id, position: ws.tasks.filter((x) => x.listId === l.id).length, ...(status ? { status } : {}) });
+          log.push(`✓ Moved “${t.title}” to ${l.name}`);
+          break;
+        }
+        case "create_task": {
+          const l = list(a);
+          if (!l || !a.title?.trim()) { fail("Couldn't find the list for the new card"); break; }
+          await createTask({
+            listId: l.id, title: a.title.trim(), owner: a.owner?.trim() ?? "", deadline: a.deadline && a.deadline !== "none" ? a.deadline : null,
+            status: a.status ?? statusForListName(l.name) ?? "todo", position: ws.tasks.filter((x) => x.listId === l.id).length,
+            sourceMeetingId: null, lastMentionedMeetingId: null,
+          });
+          log.push(`✓ Added “${a.title.trim()}” to ${l.name}`);
+          break;
+        }
+        case "update_task": {
+          const t = task(a);
+          if (!t) { fail("Couldn't find that card"); break; }
+          await updateTask(t.id, {
+            ...(a.title ? { title: a.title } : {}),
+            ...(a.owner !== null ? { owner: a.owner } : {}),
+            ...(a.deadline ? { deadline: a.deadline === "none" ? null : a.deadline } : {}),
+            ...(a.status ? { status: a.status } : {}),
+          });
+          log.push(`✓ Updated “${a.title ?? t.title}”`);
+          break;
+        }
+        case "delete_task": {
+          const t = task(a);
+          if (!t) { fail("Couldn't find that card"); break; }
+          await deleteTask(t.id);
+          log.push(`✓ Deleted “${t.title}”`);
+          break;
+        }
+        case "create_list": {
+          const b = board(a);
+          if (!b || !a.name?.trim()) { fail("Couldn't find the board for the new list"); break; }
+          await createList(b.id, a.name.trim(), ws.lists.filter((l) => l.boardId === b.id).length);
+          log.push(`✓ Added list “${a.name.trim()}” to ${b.name}`);
+          break;
+        }
+        case "rename_list": {
+          const l = list(a);
+          if (!l || !a.name?.trim()) { fail("Couldn't find that list"); break; }
+          await renameList(l.id, a.name.trim());
+          log.push(`✓ Renamed list “${l.name}” to “${a.name.trim()}”`);
+          break;
+        }
+        case "delete_list": {
+          const l = list(a);
+          if (!l) { fail("Couldn't find that list"); break; }
+          await deleteList(l.id);
+          log.push(`✓ Deleted list “${l.name}”`);
+          break;
+        }
+        case "create_board": {
+          if (!a.name?.trim()) { fail("The new board needs a name"); break; }
+          await createBoard(a.name.trim());
+          log.push(`✓ Created board “${a.name.trim()}”`);
+          break;
+        }
+        case "rename_board": {
+          const b = board(a);
+          if (!b || !a.name?.trim()) { fail("Couldn't find that board"); break; }
+          await renameBoard(b.id, a.name.trim());
+          log.push(`✓ Renamed board “${b.name}” to “${a.name.trim()}”`);
+          break;
+        }
+        case "delete_board": {
+          const b = board(a);
+          if (!b) { fail("Couldn't find that board"); break; }
+          await deleteBoard(b.id);
+          log.push(`✓ Deleted board “${b.name}”`);
+          break;
+        }
+      }
+    } catch (e) {
+      fail((e as Error).message);
+    }
+    ws = await fetchWorkspace();
+  }
+  return log;
 }

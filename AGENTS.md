@@ -15,3 +15,4 @@
 - Signed-in pages live under `src/routes/_authenticated/_shell/` (the `_shell` layout renders the sidebar and the pending-approval screen).
 - Live transcription: browser records WAV segments (`src/lib/live-recorder.ts`) and posts them to the `/api/transcribe` server route, which verifies the bearer token and editor rights.
 - Shared domain types live in `src/types`; demo rows are flagged `is_sample` in the database.
+- Board assistant: `/api/assistant` only plans actions (strict JSON from the AI gateway); the browser executes them via `runAssistantActions` in `src/services/api.ts`, so RLS still governs every change.

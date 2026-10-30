@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedShellRouteImport } from './routes/_authenticated/_shell'
+import { Route as ApiAssistantRouteImport } from './routes/api/assistant'
 import { Route as ApiTranscribeRouteImport } from './routes/api/transcribe'
 import { Route as AuthenticatedShellAdminRouteImport } from './routes/_authenticated/_shell/admin'
 import { Route as AuthenticatedShellDashboardRouteImport } from './routes/_authenticated/_shell/dashboard'
@@ -40,6 +41,11 @@ const AuthRoute = AuthRouteImport.update({
 const AuthenticatedShellRoute = AuthenticatedShellRouteImport.update({
   id: '/_shell',
   getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const ApiAssistantRoute = ApiAssistantRouteImport.update({
+  id: '/api/assistant',
+  path: '/api/assistant',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiTranscribeRoute = ApiTranscribeRouteImport.update({
   id: '/api/transcribe',
@@ -96,6 +102,7 @@ const AuthenticatedShellTasksRoute = AuthenticatedShellTasksRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/api/assistant': typeof ApiAssistantRoute
   '/api/transcribe': typeof ApiTranscribeRoute
   '/admin': typeof AuthenticatedShellAdminRoute
   '/dashboard': typeof AuthenticatedShellDashboardRoute
@@ -109,6 +116,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/api/assistant': typeof ApiAssistantRoute
   '/api/transcribe': typeof ApiTranscribeRoute
   '/admin': typeof AuthenticatedShellAdminRoute
   '/dashboard': typeof AuthenticatedShellDashboardRoute
@@ -125,6 +133,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/_shell': typeof AuthenticatedShellRouteWithChildren
+  '/api/assistant': typeof ApiAssistantRoute
   '/api/transcribe': typeof ApiTranscribeRoute
   '/_authenticated/_shell/admin': typeof AuthenticatedShellAdminRoute
   '/_authenticated/_shell/dashboard': typeof AuthenticatedShellDashboardRoute
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/api/assistant'
     | '/api/transcribe'
     | '/admin'
     | '/dashboard'
@@ -153,6 +163,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/api/assistant'
     | '/api/transcribe'
     | '/admin'
     | '/dashboard'
@@ -168,6 +179,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/_shell'
+    | '/api/assistant'
     | '/api/transcribe'
     | '/_authenticated/_shell/admin'
     | '/_authenticated/_shell/dashboard'
@@ -183,6 +195,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ApiAssistantRoute: typeof ApiAssistantRoute
   ApiTranscribeRoute: typeof ApiTranscribeRoute
 }
 
@@ -215,6 +228,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedShellRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/assistant': {
+      id: '/api/assistant'
+      path: '/api/assistant'
+      fullPath: '/api/assistant'
+      preLoaderRoute: typeof ApiAssistantRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/transcribe': {
       id: '/api/transcribe'
@@ -322,6 +342,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ApiAssistantRoute: ApiAssistantRoute,
   ApiTranscribeRoute: ApiTranscribeRoute,
 }
 export const routeTree = rootRouteImport
