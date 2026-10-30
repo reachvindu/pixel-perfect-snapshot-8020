@@ -6,14 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BrandLogo, BRAND_TAGLINE } from "@/components/brand-logo";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign in — FollowThru AI" },
-      { name: "description", content: "Sign in or request access to your team's FollowThru workspace." },
-      { property: "og:title", content: "Sign in — FollowThru AI" },
-      { property: "og:description", content: "Sign in or request access to your team's FollowThru workspace." },
+      { title: "Sign in — Planova" },
+      { name: "description", content: "Sign in or request access to your team's Planova workspace." },
+      { property: "og:title", content: "Sign in — Planova" },
+      { property: "og:description", content: "Sign in or request access to your team's Planova workspace." },
     ],
   }),
   component: AuthPage,
@@ -65,9 +66,12 @@ function AuthPage() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-sm rounded-2xl border bg-card p-6 shadow-card">
-        <div className="mb-6 flex items-center gap-2 font-semibold">
-          <span className="bg-brand flex size-7 items-center justify-center rounded-md text-sm text-primary-foreground">F</span>
-          FollowThru <span className="text-brand">AI</span>
+        <div className="mb-6 flex flex-col items-center gap-2">
+          <div className="flex items-center gap-2.5">
+            <BrandLogo size={32} />
+            <span className="text-lg font-semibold tracking-wide uppercase">Planova</span>
+          </div>
+          <span className="text-xs text-muted-foreground">{BRAND_TAGLINE}</span>
         </div>
         <Tabs value={mode} onValueChange={(v) => setMode(v as typeof mode)}>
           <TabsList className="grid w-full grid-cols-2">
