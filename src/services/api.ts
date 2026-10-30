@@ -50,4 +50,4 @@ export async function resetData(): Promise<AppData> {
  * Future: send a transcript to an n8n workflow that extracts tasks and
  * proposes status changes. Not implemented yet — no live AI processing.
  */
-export const N8N_TRANSCRIPT_WEBHOOK_URL: string | undefined = import.meta.env.VITE_N8N_WEBHOOK_URL;
+export const N8N_TRANSCRIPT_WEBHOOK_URL: string | undefined = import.meta.env["VITE_N8N_WEBHOOK_URL"];
