@@ -40,7 +40,7 @@ function AdminPage() {
   const admins = members.filter((m) => m.role === "admin" && m.status === "approved").length;
 
   const row = (m: Member) => (
-    <div key={m.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 md:grid-cols-[minmax(0,1fr)_110px_150px_minmax(200px,auto)]">
+    <div key={m.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 lg:grid-cols-[minmax(0,1fr)_110px_150px_minmax(200px,auto)]">
       <div className="flex min-w-0 items-center gap-3">
         <Avatar name={m.fullName || m.email} />
         <div className="min-w-0">
@@ -49,9 +49,9 @@ function AdminPage() {
         </div>
       </div>
       <div><span className={cn("rounded-full px-2 py-0.5 text-xs font-medium capitalize", STATUS_STYLE[m.status])}>{m.status}</span></div>
-      <div className="col-span-2 md:col-span-1">
+      <div className="col-span-2 lg:col-span-1">
         <Select value={m.role} disabled={role.pending || m.status === "inactive"} onValueChange={(v) => role.run(m.id, v as AppRole)}>
-          <SelectTrigger className="h-8 w-full md:w-[140px]" aria-label={`Role for ${m.email}`}><SelectValue>{ROLES.find((r) => r.value === m.role)?.label}</SelectValue></SelectTrigger>
+          <SelectTrigger className="h-8 w-full lg:w-[140px]" aria-label={`Role for ${m.email}`}><SelectValue>{ROLES.find((r) => r.value === m.role)?.label}</SelectValue></SelectTrigger>
           <SelectContent>
             {ROLES.map((r) => (
               <SelectItem key={r.value} value={r.value}>
@@ -61,7 +61,7 @@ function AdminPage() {
           </SelectContent>
         </Select>
       </div>
-      <div className="col-span-2 flex flex-wrap justify-start gap-2 md:col-span-1 md:justify-end">
+      <div className="col-span-2 flex flex-wrap justify-start gap-2 lg:col-span-1 lg:justify-end">
         {m.id !== me.id && (
           <>
             {m.status === "pending" && <Button size="sm" disabled={status.pending} onClick={() => status.run(m.id, "approved")}><Check /> Approve</Button>}
@@ -83,7 +83,7 @@ function AdminPage() {
 
   const table = (list: Member[]) => (
     <div className="overflow-hidden rounded-xl border bg-card text-sm shadow-card">
-      <div className="hidden grid-cols-[minmax(0,1fr)_110px_150px_minmax(200px,auto)] gap-3 border-b bg-muted px-4 py-2.5 text-xs font-medium text-muted-foreground md:grid">
+      <div className="hidden grid-cols-[minmax(0,1fr)_110px_150px_minmax(200px,auto)] gap-3 border-b bg-muted px-4 py-2.5 text-xs font-medium text-muted-foreground lg:grid">
         <span>Member</span><span>Status</span><span>Access</span><span />
       </div>
       <div className="divide-y">{list.map(row)}</div>
