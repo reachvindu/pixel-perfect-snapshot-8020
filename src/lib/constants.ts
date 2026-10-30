@@ -9,8 +9,8 @@ export const PLATFORM_LABELS: Record<MeetingPlatform, string> = {
 export const STATUS_LABELS: Record<TaskStatus, string> = {
   todo: "To Do",
   in_progress: "In Progress",
-  blocked: "Blocked",
-  done: "Done",
+  blocked: "Hold",
+  done: "Completed",
 };
 
 export const STATUS_ORDER: TaskStatus[] = ["todo", "in_progress", "blocked", "done"];
