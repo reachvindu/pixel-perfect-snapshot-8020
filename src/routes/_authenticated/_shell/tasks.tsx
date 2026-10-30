@@ -80,7 +80,7 @@ function BoardsPage() {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {boards.length > 0 && (
-              <Select value={board?.id} onValueChange={setBoardId}>
+              <Select value={board?.id ?? ""} onValueChange={setBoardId}>
                 <SelectTrigger className="w-[200px]" aria-label="Choose board"><SelectValue>{board?.name}</SelectValue></SelectTrigger>
                 <SelectContent>{boards.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
               </Select>
