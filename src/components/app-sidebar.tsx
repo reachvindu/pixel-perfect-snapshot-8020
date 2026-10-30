@@ -5,7 +5,7 @@ import {
   SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { useMe } from "@/store/app-store";
-import { useSignOut } from "@/routes/_authenticated/_shell";
+import { useSignOut } from "@/hooks/use-sign-out";
 import { Avatar } from "@/components/shared";
 
 type Item = { title: string; url: string; icon: typeof Plug };

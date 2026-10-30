@@ -1,10 +1,9 @@
-import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { useSignOut } from "@/hooks/use-sign-out";
 import { Clock, LogOut } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
 import { meQuery, useMe, workspaceQuery } from "@/store/app-store";
 
 export const Route = createFileRoute("/_authenticated/_shell")({
@@ -14,17 +13,6 @@ export const Route = createFileRoute("/_authenticated/_shell")({
   },
   component: Shell,
 });
-
-export function useSignOut() {
-  const qc = useQueryClient();
-  const navigate = useNavigate();
-  return async () => {
-    await qc.cancelQueries();
-    qc.clear();
-    await supabase.auth.signOut();
-    navigate({ to: "/auth", replace: true });
-  };
-}
 
 function Shell() {
   const me = useMe();
