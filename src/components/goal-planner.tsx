@@ -87,7 +87,7 @@ export function GoalPlanner({ boards, defaultBoardId }: { boards: Board[]; defau
                 {plan.tasks.map((t, i) => (
                   <li key={i}>
                     <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-2.5 text-sm hover:bg-muted">
-                      <Checkbox checked={picked[i]} onCheckedChange={(c) => setPicked((p) => p.map((v, j) => (j === i ? c === true : v)))} className="mt-0.5" />
+                      <Checkbox checked={picked[i] ?? false} onCheckedChange={(c) => setPicked((p) => p.map((v, j) => (j === i ? c === true : v)))} className="mt-0.5" />
                       <span className="flex-1">
                         <span className="font-medium">{t.title}</span>
                         {(t.owner || t.deadline) && (
