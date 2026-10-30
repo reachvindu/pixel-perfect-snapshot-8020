@@ -9,7 +9,7 @@ export function getForgottenCommitments(tasks: Task[], meetings: Meeting[]) {
   return tasks
     .filter((t) => t.status !== "done")
     .map((t) => {
-      const last = byId.get(t.lastMentionedMeetingId);
+      const last = t.lastMentionedMeetingId ? byId.get(t.lastMentionedMeetingId) : undefined;
       if (!last) return null;
       const later = meetings.filter((m) => m.date > last.date);
       if (later.length === 0) return null;
