@@ -1,14 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { CalendarDays, MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react";
+import { ArrowLeft, CalendarDays, KanbanSquare, MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useAction, useMe, useWorkspace } from "@/store/app-store";
 import {
-  createBoard, createList, createTask, deleteBoard, deleteList, deleteTask, renameBoard, renameList, updateTask,
+  createBoard, createList, createTask, deleteBoard, deleteList, deleteTask, renameBoard, renameList, updateBoardDescription, updateTask,
   type TaskInput,
 } from "@/services/api";
 import { Avatar, PageHeader, SampleBadge, StatusPill, EmptyState } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { BoardAssistant } from "@/components/board-assistant";
+import { GoalPlanner } from "@/components/goal-planner";
+import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -26,18 +28,19 @@ export const Route = createFileRoute("/_authenticated/_shell/tasks")({
 function BoardsPage() {
   const { boards, lists, tasks, meetings } = useWorkspace();
   const me = useMe();
-  const [boardId, setBoardId] = useState<string | null>(boards[0]?.id ?? null);
-  const [newBoard, setNewBoard] = useState<string | null>(null);
+  const [boardId, setBoardId] = useState<string | null>(null);
+  const [newBoard, setNewBoard] = useState<{ name: string; description: string } | null>(null);
   const [editing, setEditing] = useState<{ id?: string; draft: TaskInput } | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
 
-  const board = boards.find((b) => b.id === boardId) ?? boards[0];
+  const board = boards.find((b) => b.id === boardId);
   const boardLists = board ? lists.filter((l) => l.boardId === board.id) : [];
 
   const addBoard = useAction(createBoard);
   const delBoard = useAction(deleteBoard);
   const renBoard = useAction(renameBoard);
+  const descBoard = useAction(updateBoardDescription);
   const addList = useAction(createList);
   const renList = useAction(renameList);
   const delList = useAction(deleteList);
@@ -77,16 +80,12 @@ function BoardsPage() {
     <div className="flex h-full flex-col">
       <PageHeader
         title={board ? board.name : "Boards"}
-        description="Drag cards between lists. Every board is shared with the whole team."
+        description={board ? (board.description || "Drag cards between lists. Every board is shared with the whole team.") : "Pick a board to open it. Every board is shared with the whole team."}
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            {board && <Button variant="ghost" onClick={() => setBoardId(null)}><ArrowLeft /> All boards</Button>}
             <BoardAssistant currentBoardId={board?.id ?? null} />
-            {boards.length > 0 && (
-              <Select value={board?.id ?? ""} onValueChange={setBoardId}>
-                <SelectTrigger className="w-[200px]" aria-label="Choose board"><SelectValue>{board?.name}</SelectValue></SelectTrigger>
-                <SelectContent>{boards.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
-              </Select>
-            )}
+            {me.canEdit && <GoalPlanner key={board?.id ?? "all"} boards={boards} defaultBoardId={board?.id ?? null} />}
             {me.canEdit && board && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild><Button variant="outline" size="icon" aria-label="Board options"><MoreHorizontal /></Button></DropdownMenuTrigger>
@@ -94,19 +93,42 @@ function BoardsPage() {
                   <DropdownMenuItem onSelect={() => { const n = prompt("Rename board", board.name)?.trim(); if (n) void renBoard.run(board.id, n); }}>
                     <Pencil /> Rename board
                   </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => { const d = prompt("Board description", board.description); if (d !== null) void descBoard.run(board.id, d.trim()); }}>
+                    <Pencil /> Edit description
+                  </DropdownMenuItem>
                   <DropdownMenuItem className="text-destructive" onSelect={() => { if (confirm(`Delete “${board.name}” and all its lists and cards?`)) { void delBoard.run(board.id); setBoardId(null); } }}>
                     <Trash2 /> Delete board
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
-            {me.canEdit && <Button onClick={() => setNewBoard("")}><Plus /> New board</Button>}
+            {me.canEdit && <Button onClick={() => setNewBoard({ name: "", description: "" })}><Plus /> New board</Button>}
           </div>
         }
       />
 
-      {!board ? (
+      {boards.length === 0 ? (
         <EmptyState>No boards yet.{me.canEdit && " Create one to get started."}</EmptyState>
+      ) : !board ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {boards.map((b) => {
+            const listIds = new Set(lists.filter((l) => l.boardId === b.id).map((l) => l.id));
+            const count = tasks.filter((t) => listIds.has(t.listId)).length;
+            return (
+              <button key={b.id} onClick={() => setBoardId(b.id)}
+                className="group flex flex-col gap-2 rounded-xl border bg-card p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-md">
+                <div className="flex items-center gap-3">
+                  <span className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary"><KanbanSquare className="size-5" /></span>
+                  <span className="flex-1 truncate text-lg font-semibold">{b.name}</span>
+                  <span className="rounded-full bg-muted px-2.5 py-0.5 text-sm font-semibold" aria-label={`${count} cards`}>{count}</span>
+                </div>
+                <p className="line-clamp-2 text-sm text-muted-foreground">{b.description || "No description yet."}</p>
+                <p className="text-xs text-muted-foreground">{listIds.size} lists · {count} cards</p>
+                {b.isSample && <SampleBadge />}
+              </button>
+            );
+          })}
+        </div>
       ) : (
         <div className="-mx-4 flex flex-1 items-start gap-4 overflow-x-auto px-4 pb-4 md:-mx-8 md:px-8">
           {boardLists.map((list) => {
@@ -149,12 +171,14 @@ function BoardsPage() {
           <DialogHeader><DialogTitle>New board</DialogTitle></DialogHeader>
           <div className="space-y-1.5">
             <Label htmlFor="board-name">Board name</Label>
-            <Input id="board-name" autoFocus value={newBoard ?? ""} onChange={(e) => setNewBoard(e.target.value)} placeholder="Marketing launch" />
+            <Input id="board-name" autoFocus value={newBoard?.name ?? ""} onChange={(e) => setNewBoard((n) => n && { ...n, name: e.target.value })} placeholder="Marketing launch" />
+            <Label htmlFor="board-desc" className="pt-2">Description</Label>
+            <Textarea id="board-desc" rows={2} value={newBoard?.description ?? ""} onChange={(e) => setNewBoard((n) => n && { ...n, description: e.target.value })} placeholder="What is this board for?" />
             <p className="text-xs text-muted-foreground">Starts with To Do, In Progress, Hold and Completed lists — rename or add more anytime.</p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setNewBoard(null)}>Cancel</Button>
-            <Button disabled={!newBoard?.trim() || addBoard.pending} onClick={async () => { const id = await addBoard.run(newBoard!.trim()); setBoardId(id as string); setNewBoard(null); }}>Create board</Button>
+            <Button disabled={!newBoard?.name.trim() || addBoard.pending} onClick={async () => { const id = await addBoard.run(newBoard!.name.trim(), newBoard!.description.trim()); setBoardId(id as string); setNewBoard(null); }}>Create board</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
