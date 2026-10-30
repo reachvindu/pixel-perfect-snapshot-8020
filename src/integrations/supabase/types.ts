@@ -14,16 +14,291 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      ai_proposals: {
+        Row: {
+          confidence: number
+          created_at: string
+          current_status: Database["public"]["Enums"]["task_status"]
+          decision: Database["public"]["Enums"]["proposal_decision"]
+          evidence: string
+          id: string
+          is_sample: boolean
+          meeting_id: string
+          proposed_status: Database["public"]["Enums"]["task_status"]
+          task_id: string
+        }
+        Insert: {
+          confidence?: number
+          created_at?: string
+          current_status: Database["public"]["Enums"]["task_status"]
+          decision?: Database["public"]["Enums"]["proposal_decision"]
+          evidence: string
+          id?: string
+          is_sample?: boolean
+          meeting_id: string
+          proposed_status: Database["public"]["Enums"]["task_status"]
+          task_id: string
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          current_status?: Database["public"]["Enums"]["task_status"]
+          decision?: Database["public"]["Enums"]["proposal_decision"]
+          evidence?: string
+          id?: string
+          is_sample?: boolean
+          meeting_id?: string
+          proposed_status?: Database["public"]["Enums"]["task_status"]
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_proposals_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_proposals_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      board_lists: {
+        Row: {
+          board_id: string
+          created_at: string
+          id: string
+          name: string
+          position: number
+        }
+        Insert: {
+          board_id: string
+          created_at?: string
+          id?: string
+          name: string
+          position?: number
+        }
+        Update: {
+          board_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_lists_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      boards: {
+        Row: {
+          created_at: string
+          id: string
+          is_sample: boolean
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_sample?: boolean
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_sample?: boolean
+          name?: string
+        }
+        Relationships: []
+      }
+      meetings: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          date: string
+          id: string
+          is_sample: boolean
+          link: string
+          platform: Database["public"]["Enums"]["meeting_platform"]
+          title: string
+          transcript: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          date: string
+          id?: string
+          is_sample?: boolean
+          link: string
+          platform: Database["public"]["Enums"]["meeting_platform"]
+          title: string
+          transcript?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          id?: string
+          is_sample?: boolean
+          link?: string
+          platform?: Database["public"]["Enums"]["meeting_platform"]
+          title?: string
+          transcript?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          status: Database["public"]["Enums"]["member_status"]
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          full_name?: string
+          id: string
+          status?: Database["public"]["Enums"]["member_status"]
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          status?: Database["public"]["Enums"]["member_status"]
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          created_at: string
+          deadline: string | null
+          id: string
+          is_sample: boolean
+          last_mentioned_meeting_id: string | null
+          list_id: string
+          owner: string
+          position: number
+          source_meeting_id: string | null
+          status: Database["public"]["Enums"]["task_status"]
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          deadline?: string | null
+          id?: string
+          is_sample?: boolean
+          last_mentioned_meeting_id?: string | null
+          list_id: string
+          owner?: string
+          position?: number
+          source_meeting_id?: string | null
+          status?: Database["public"]["Enums"]["task_status"]
+          title: string
+        }
+        Update: {
+          created_at?: string
+          deadline?: string | null
+          id?: string
+          is_sample?: boolean
+          last_mentioned_meeting_id?: string | null
+          list_id?: string
+          owner?: string
+          position?: number
+          source_meeting_id?: string | null
+          status?: Database["public"]["Enums"]["task_status"]
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_last_mentioned_meeting_id_fkey"
+            columns: ["last_mentioned_meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "board_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_source_meeting_id_fkey"
+            columns: ["source_meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      admin_set_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: undefined
+      }
+      admin_set_status: {
+        Args: {
+          _status: Database["public"]["Enums"]["member_status"]
+          _user_id: string
+        }
+        Returns: undefined
+      }
+      can_edit: { Args: { _user_id: string }; Returns: boolean }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_approved: { Args: { _user_id: string }; Returns: boolean }
+      update_my_name: { Args: { _name: string }; Returns: undefined }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "editor" | "viewer"
+      meeting_platform: "zoom" | "google_meet" | "teams"
+      member_status: "pending" | "approved" | "rejected"
+      proposal_decision: "pending" | "approved" | "rejected"
+      task_status: "todo" | "in_progress" | "blocked" | "done"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +425,12 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "editor", "viewer"],
+      meeting_platform: ["zoom", "google_meet", "teams"],
+      member_status: ["pending", "approved", "rejected"],
+      proposal_decision: ["pending", "approved", "rejected"],
+      task_status: ["todo", "in_progress", "blocked", "done"],
+    },
   },
 } as const
