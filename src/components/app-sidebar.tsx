@@ -7,6 +7,7 @@ import {
 import { useMe } from "@/store/app-store";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { Avatar } from "@/components/shared";
+import { BrandLogo, BRAND_TAGLINE } from "@/components/brand-logo";
 
 type Item = { title: string; url: string; icon: typeof Plug };
 const main: Item[] = [
@@ -42,10 +43,11 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <div className="flex items-center gap-2 px-1 py-1.5">
-          <div className="bg-brand flex size-7 shrink-0 items-center justify-center rounded-md text-sm font-bold text-primary-foreground">F</div>
-          <span className="truncate font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
-            FollowThru <span className="text-brand">AI</span>
-          </span>
+          <BrandLogo size={30} />
+          <div className="min-w-0 group-data-[collapsible=icon]:hidden">
+            <div className="truncate text-base font-semibold tracking-wide uppercase leading-tight">Planova</div>
+            <div className="truncate text-[10px] text-muted-foreground leading-tight">{BRAND_TAGLINE}</div>
+          </div>
         </div>
       </SidebarHeader>
       <SidebarContent>
