@@ -10,115 +10,33 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as FollowThroughRouteImport } from './routes/follow-through'
-import { Route as ForgottenRouteImport } from './routes/forgotten'
-import { Route as IntegrationsRouteImport } from './routes/integrations'
-import { Route as MeetingsRouteImport } from './routes/meetings'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as TasksRouteImport } from './routes/tasks'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const FollowThroughRoute = FollowThroughRouteImport.update({
-  id: '/follow-through',
-  path: '/follow-through',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ForgottenRoute = ForgottenRouteImport.update({
-  id: '/forgotten',
-  path: '/forgotten',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const IntegrationsRoute = IntegrationsRouteImport.update({
-  id: '/integrations',
-  path: '/integrations',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MeetingsRoute = MeetingsRouteImport.update({
-  id: '/meetings',
-  path: '/meetings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TasksRoute = TasksRouteImport.update({
-  id: '/tasks',
-  path: '/tasks',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/follow-through': typeof FollowThroughRoute
-  '/forgotten': typeof ForgottenRoute
-  '/integrations': typeof IntegrationsRoute
-  '/meetings': typeof MeetingsRoute
-  '/settings': typeof SettingsRoute
-  '/tasks': typeof TasksRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/follow-through': typeof FollowThroughRoute
-  '/forgotten': typeof ForgottenRoute
-  '/integrations': typeof IntegrationsRoute
-  '/meetings': typeof MeetingsRoute
-  '/settings': typeof SettingsRoute
-  '/tasks': typeof TasksRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/follow-through': typeof FollowThroughRoute
-  '/forgotten': typeof ForgottenRoute
-  '/integrations': typeof IntegrationsRoute
-  '/meetings': typeof MeetingsRoute
-  '/settings': typeof SettingsRoute
-  '/tasks': typeof TasksRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/follow-through'
-    | '/forgotten'
-    | '/integrations'
-    | '/meetings'
-    | '/settings'
-    | '/tasks'
+  fullPaths: '/'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/follow-through'
-    | '/forgotten'
-    | '/integrations'
-    | '/meetings'
-    | '/settings'
-    | '/tasks'
-  id:
-    | '__root__'
-    | '/'
-    | '/follow-through'
-    | '/forgotten'
-    | '/integrations'
-    | '/meetings'
-    | '/settings'
-    | '/tasks'
+  to: '/'
+  id: '__root__' | '/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  FollowThroughRoute: typeof FollowThroughRoute
-  ForgottenRoute: typeof ForgottenRoute
-  IntegrationsRoute: typeof IntegrationsRoute
-  MeetingsRoute: typeof MeetingsRoute
-  SettingsRoute: typeof SettingsRoute
-  TasksRoute: typeof TasksRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -130,59 +48,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/follow-through': {
-      id: '/follow-through'
-      path: '/follow-through'
-      fullPath: '/follow-through'
-      preLoaderRoute: typeof FollowThroughRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/forgotten': {
-      id: '/forgotten'
-      path: '/forgotten'
-      fullPath: '/forgotten'
-      preLoaderRoute: typeof ForgottenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/integrations': {
-      id: '/integrations'
-      path: '/integrations'
-      fullPath: '/integrations'
-      preLoaderRoute: typeof IntegrationsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/meetings': {
-      id: '/meetings'
-      path: '/meetings'
-      fullPath: '/meetings'
-      preLoaderRoute: typeof MeetingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/tasks': {
-      id: '/tasks'
-      path: '/tasks'
-      fullPath: '/tasks'
-      preLoaderRoute: typeof TasksRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  FollowThroughRoute: FollowThroughRoute,
-  ForgottenRoute: ForgottenRoute,
-  IntegrationsRoute: IntegrationsRoute,
-  MeetingsRoute: MeetingsRoute,
-  SettingsRoute: SettingsRoute,
-  TasksRoute: TasksRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
