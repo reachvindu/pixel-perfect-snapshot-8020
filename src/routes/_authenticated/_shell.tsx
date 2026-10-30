@@ -44,7 +44,7 @@ function Shell() {
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-10 flex h-12 items-center gap-2 border-b bg-background/80 px-3 backdrop-blur">
             <SidebarTrigger />
-            <span className="text-sm text-muted-foreground">FollowThru AI</span>
+            <span className="text-sm text-muted-foreground">Planova</span>
           </header>
           <main className="w-full min-w-0 flex-1 p-4 md:p-8">
             <Outlet />

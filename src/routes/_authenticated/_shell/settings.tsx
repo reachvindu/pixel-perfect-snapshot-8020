@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export const Route = createFileRoute("/_authenticated/_shell/settings")({
-  head: () => ({ meta: [{ title: "Settings — FollowThru AI" }, { name: "description", content: "Your profile." }] }),
+  head: () => ({ meta: [{ title: "Settings — Planova" }, { name: "description", content: "Your profile." }] }),
   component: SettingsPage,
 });
 

@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 import type { BoardList, Task, TaskStatus } from "@/types";
 
 export const Route = createFileRoute("/_authenticated/_shell/tasks")({
-  head: () => ({ meta: [{ title: "Boards — FollowThru AI" }, { name: "description", content: "Trello-style team boards with lists and cards." }] }),
+  head: () => ({ meta: [{ title: "Boards — Planova" }, { name: "description", content: "Trello-style team boards with lists and cards." }] }),
   component: BoardsPage,
 });
 
