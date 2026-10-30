@@ -3,20 +3,23 @@
  * Pages never talk to the database directly; they use the hooks in src/store.
  */
 import { supabase } from "@/integrations/supabase/client";
+import type { TablesUpdate } from "@/integrations/supabase/types";
 import type {
   AIProposal, AppRole, Board, BoardList, Meeting, Member, MemberStatus, Task, TaskStatus,
 } from "@/types";
 
-function check<T>(res: { data: T; error: { message: string } | null }): T {
+function check<T>(res: { data: T; error: { message: string } | null }): NonNullable<T> {
   if (res.error) throw new Error(res.error.message);
-  return res.data;
+  return res.data as NonNullable<T>;
 }
 
 /* ---------- current user ---------- */
 export async function fetchMe() {
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) return null;
-  const profile = check(await supabase.from("profiles").select("*").eq("id", u.user.id).maybeSingle());
+  const pr = await supabase.from("profiles").select("*").eq("id", u.user.id).maybeSingle();
+  if (pr.error) throw new Error(pr.error.message);
+  const profile = pr.data;
   const roles = check(await supabase.from("user_roles").select("role").eq("user_id", u.user.id));
   const role: AppRole = roles.some((r) => r.role === "admin") ? "admin" : roles.some((r) => r.role === "editor") ? "editor" : "viewer";
   return {
@@ -103,7 +106,7 @@ export async function createTask(t: TaskInput) {
   }));
 }
 export async function updateTask(id: string, t: Partial<TaskInput>) {
-  const row: Record<string, unknown> = {};
+  const row: TablesUpdate<"tasks"> = {};
   if (t.listId !== undefined) row.list_id = t.listId;
   if (t.title !== undefined) row.title = t.title;
   if (t.owner !== undefined) row.owner = t.owner;

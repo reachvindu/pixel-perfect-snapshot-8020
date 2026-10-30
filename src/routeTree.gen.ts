@@ -21,6 +21,7 @@ import { Route as AuthenticatedShellForgottenRouteImport } from './routes/_authe
 import { Route as AuthenticatedShellIntegrationsRouteImport } from './routes/_authenticated/_shell/integrations'
 import { Route as AuthenticatedShellMeetingsRouteImport } from './routes/_authenticated/_shell/meetings'
 import { Route as AuthenticatedShellSettingsRouteImport } from './routes/_authenticated/_shell/settings'
+import { Route as AuthenticatedShellTasksRouteImport } from './routes/_authenticated/_shell/tasks'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -86,6 +87,11 @@ const AuthenticatedShellSettingsRoute =
     path: '/settings',
     getParentRoute: () => AuthenticatedShellRoute,
   } as any)
+const AuthenticatedShellTasksRoute = AuthenticatedShellTasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => AuthenticatedShellRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -98,6 +104,7 @@ export interface FileRoutesByFullPath {
   '/integrations': typeof AuthenticatedShellIntegrationsRoute
   '/meetings': typeof AuthenticatedShellMeetingsRoute
   '/settings': typeof AuthenticatedShellSettingsRoute
+  '/tasks': typeof AuthenticatedShellTasksRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -110,6 +117,7 @@ export interface FileRoutesByTo {
   '/integrations': typeof AuthenticatedShellIntegrationsRoute
   '/meetings': typeof AuthenticatedShellMeetingsRoute
   '/settings': typeof AuthenticatedShellSettingsRoute
+  '/tasks': typeof AuthenticatedShellTasksRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -125,6 +133,7 @@ export interface FileRoutesById {
   '/_authenticated/_shell/integrations': typeof AuthenticatedShellIntegrationsRoute
   '/_authenticated/_shell/meetings': typeof AuthenticatedShellMeetingsRoute
   '/_authenticated/_shell/settings': typeof AuthenticatedShellSettingsRoute
+  '/_authenticated/_shell/tasks': typeof AuthenticatedShellTasksRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -139,6 +148,7 @@ export interface FileRouteTypes {
     | '/integrations'
     | '/meetings'
     | '/settings'
+    | '/tasks'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -151,6 +161,7 @@ export interface FileRouteTypes {
     | '/integrations'
     | '/meetings'
     | '/settings'
+    | '/tasks'
   id:
     | '__root__'
     | '/'
@@ -165,6 +176,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_shell/integrations'
     | '/_authenticated/_shell/meetings'
     | '/_authenticated/_shell/settings'
+    | '/_authenticated/_shell/tasks'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -260,6 +272,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedShellSettingsRouteImport
       parentRoute: typeof AuthenticatedShellRoute
     }
+    '/_authenticated/_shell/tasks': {
+      id: '/_authenticated/_shell/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof AuthenticatedShellTasksRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
   }
 }
 
@@ -271,6 +290,7 @@ interface AuthenticatedShellRouteChildren {
   AuthenticatedShellIntegrationsRoute: typeof AuthenticatedShellIntegrationsRoute
   AuthenticatedShellMeetingsRoute: typeof AuthenticatedShellMeetingsRoute
   AuthenticatedShellSettingsRoute: typeof AuthenticatedShellSettingsRoute
+  AuthenticatedShellTasksRoute: typeof AuthenticatedShellTasksRoute
 }
 
 const AuthenticatedShellRouteChildren: AuthenticatedShellRouteChildren = {
@@ -281,6 +301,7 @@ const AuthenticatedShellRouteChildren: AuthenticatedShellRouteChildren = {
   AuthenticatedShellIntegrationsRoute: AuthenticatedShellIntegrationsRoute,
   AuthenticatedShellMeetingsRoute: AuthenticatedShellMeetingsRoute,
   AuthenticatedShellSettingsRoute: AuthenticatedShellSettingsRoute,
+  AuthenticatedShellTasksRoute: AuthenticatedShellTasksRoute,
 }
 
 const AuthenticatedShellRouteWithChildren =
