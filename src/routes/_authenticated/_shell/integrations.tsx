@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/shared";
 
 export const Route = createFileRoute("/_authenticated/_shell/integrations")({
-  head: () => ({ meta: [{ title: "Integrations — FollowThru AI" }, { name: "description", content: "Zoom, Teams and Google Meet connections." }] }),
+  head: () => ({ meta: [{ title: "Integrations — Planova" }, { name: "description", content: "Zoom, Teams and Google Meet connections." }] }),
   component: IntegrationsPage,
 });
 

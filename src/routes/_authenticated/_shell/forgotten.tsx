@@ -5,7 +5,7 @@ import { getForgottenCommitments } from "@/lib/commitments";
 import { formatDate } from "@/lib/constants";
 
 export const Route = createFileRoute("/_authenticated/_shell/forgotten")({
-  head: () => ({ meta: [{ title: "Forgotten Commitments — FollowThru AI" }, { name: "description", content: "Open tasks not mentioned in later meetings." }] }),
+  head: () => ({ meta: [{ title: "Forgotten Commitments — Planova" }, { name: "description", content: "Open tasks not mentioned in later meetings." }] }),
   component: Forgotten,
 });
 

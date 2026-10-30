@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import type { AppRole, Member } from "@/types";
 
 export const Route = createFileRoute("/_authenticated/_shell/admin")({
-  head: () => ({ meta: [{ title: "Admin portal — FollowThru AI" }, { name: "description", content: "Manage members, approvals and access." }] }),
+  head: () => ({ meta: [{ title: "Admin portal — Planova" }, { name: "description", content: "Manage members, approvals and access." }] }),
   component: AdminPage,
 });
 

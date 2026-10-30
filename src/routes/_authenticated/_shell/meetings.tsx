@@ -16,7 +16,7 @@ import { PLATFORM_LABELS, formatDate } from "@/lib/constants";
 import type { Meeting, MeetingPlatform } from "@/types";
 
 export const Route = createFileRoute("/_authenticated/_shell/meetings")({
-  head: () => ({ meta: [{ title: "Meetings — FollowThru AI" }, { name: "description", content: "Log meetings and capture live transcripts." }] }),
+  head: () => ({ meta: [{ title: "Meetings — Planova" }, { name: "description", content: "Log meetings and capture live transcripts." }] }),
   component: MeetingsPage,
 });
 

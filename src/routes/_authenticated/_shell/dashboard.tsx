@@ -6,7 +6,7 @@ import { getForgottenCommitments } from "@/lib/commitments";
 import { formatDate } from "@/lib/constants";
 
 export const Route = createFileRoute("/_authenticated/_shell/dashboard")({
-  head: () => ({ meta: [{ title: "Dashboard — FollowThru AI" }, { name: "description", content: "Team overview of meetings and tasks." }] }),
+  head: () => ({ meta: [{ title: "Dashboard — Planova" }, { name: "description", content: "Team overview of meetings and tasks." }] }),
   component: Dashboard,
 });
 

@@ -8,7 +8,7 @@ import { formatDate } from "@/lib/constants";
 import type { AIProposal } from "@/types";
 
 export const Route = createFileRoute("/_authenticated/_shell/follow-through")({
-  head: () => ({ meta: [{ title: "Follow-Through — FollowThru AI" }, { name: "description", content: "Review AI-proposed task status changes." }] }),
+  head: () => ({ meta: [{ title: "Follow-Through — Planova" }, { name: "description", content: "Review AI-proposed task status changes." }] }),
   component: FollowThrough,
 });
 
