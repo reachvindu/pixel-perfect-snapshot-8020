@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { ChevronDown, ExternalLink, FileText, KanbanSquare, Mic, MoreHorizontal, RefreshCw, Sparkles, Trash2 } from "lucide-react";
+import { ChevronDown, ExternalLink, FilePen, FileText, KanbanSquare, Mic, MoreHorizontal, RefreshCw, Sparkles, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useAction, useMe, useProcessMeeting, useWorkspace } from "@/store/app-store";
 import { deleteMeeting, updateMeetingTranscript } from "@/services/api";
@@ -31,6 +31,7 @@ function MeetingsPage() {
   const del = useAction(deleteMeeting);
   const processing = useProcessMeeting();
   const [live, setLive] = useState<Meeting | null>(null);
+  const [replacing, setReplacing] = useState<Meeting | null>(null);
   const [shown, setShown] = useState<string | null>(null);
 
   // One group per series, most recently active first; meetings newest first inside.
@@ -106,7 +107,8 @@ function MeetingsPage() {
                                 <RefreshCw /> Re-process with AI
                               </DropdownMenuItem>
                             )}
-                            {me.canEdit && <DropdownMenuItem onSelect={() => setLive(m)}><Mic /> Record / edit transcript</DropdownMenuItem>}
+                            {me.canEdit && <DropdownMenuItem onSelect={() => setReplacing(m)}><FilePen /> Edit / replace transcript</DropdownMenuItem>}
+                            {me.canEdit && <DropdownMenuItem onSelect={() => setLive(m)}><Mic /> Record live</DropdownMenuItem>}
                             {m.link && <DropdownMenuItem asChild><a href={m.link} target="_blank" rel="noreferrer"><ExternalLink /> Join meeting</a></DropdownMenuItem>}
                             {me.canEdit && (
                               <DropdownMenuItem className="text-destructive" onSelect={() => { if (confirm(`Delete “${m.title}”? Its tasks stay on the board.`)) void del.run(m.id); }}>
@@ -128,6 +130,7 @@ function MeetingsPage() {
         })}
       </div>
       {live && <LiveDialog meeting={live} onClose={() => setLive(null)} />}
+      {replacing && <ReplaceDialog meeting={replacing} onClose={() => setReplacing(null)} onRun={(text) => void processing.run(replacing.id, { replaceTranscript: text })} />}
     </div>
   );
 }
@@ -152,6 +155,40 @@ function LiveDialog({ meeting, onClose }: { meeting: Meeting; onClose: () => voi
             onClose();
             if (text.trim()) toast("Transcript saved", { action: { label: "Process with AI", onClick: () => void processing.run(meeting.id) } });
           }}>Save transcript</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Fix a wrong transcript: edit or upload a new one, undo the old AI results, and read it again. */
+function ReplaceDialog({ meeting, onClose, onRun }: { meeting: Meeting; onClose: () => void; onRun: (text: string) => void }) {
+  const [text, setText] = useState(meeting.transcript);
+  const changed = text.trim() && text !== meeting.transcript;
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader><DialogTitle>Edit or replace transcript · {meeting.title}</DialogTitle></DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          {meeting.processedAt
+            ? "Saving undoes everything the AI did from the old transcript (cards it added are removed, cards it moved go back), then reads the new one."
+            : "Saving stores the transcript and reads it with AI."}
+        </p>
+        <div className="flex justify-end">
+          <Button type="button" size="sm" variant="outline" asChild>
+            <label className="cursor-pointer"><Upload /> Upload .txt
+              <input type="file" accept=".txt,.md,.vtt,.srt,text/plain" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (f) setText(await f.text()); }} />
+            </label>
+          </Button>
+        </div>
+        <Textarea rows={14} value={text} onChange={(e) => setText(e.target.value)} />
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button disabled={!changed} onClick={() => {
+            if (meeting.processedAt && !confirm("Replace the transcript and redo the AI results? Edits made to cards the AI added from this meeting will be lost.")) return;
+            onClose();
+            onRun(text);
+          }}>{meeting.processedAt ? "Replace & re-run AI" : "Save & read with AI"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

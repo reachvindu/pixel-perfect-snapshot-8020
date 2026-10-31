@@ -80,6 +80,20 @@ export async function createMeeting(m: MeetingInput) {
 export async function updateMeetingTranscript(id: string, transcript: string) {
   check(await supabase.from("meetings").update({ transcript }).eq("id", id));
 }
+/**
+ * Undoes what the AI did from a meeting's transcript: removes the cards it added, moves cards it
+ * updated back, and forgets that the meeting discussed them. Used before re-reading a corrected transcript.
+ */
+export async function resetMeetingAI(meetingId: string) {
+  const changes = check(await supabase.from("ai_proposals").select("*").eq("meeting_id", meetingId).order("created_at", { ascending: false }));
+  for (const p of changes) if (p.decision === "approved") await setTaskStatus(p.task_id, p.current_status);
+  check(await supabase.from("ai_proposals").delete().eq("meeting_id", meetingId));
+  check(await supabase.from("tasks").delete().eq("source_meeting_id", meetingId).eq("ai_added", true));
+  const mentioned = check(await supabase.from("tasks").select("id, source_meeting_id").eq("last_mentioned_meeting_id", meetingId));
+  for (const t of mentioned) check(await supabase.from("tasks").update({ last_mentioned_meeting_id: t.source_meeting_id }).eq("id", t.id));
+  check(await supabase.from("meetings").update({ processed_at: null }).eq("id", meetingId));
+}
+
 export async function deleteMeeting(id: string) {
   check(await supabase.from("meetings").delete().eq("id", id));
 }

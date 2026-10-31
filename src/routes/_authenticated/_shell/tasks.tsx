@@ -14,7 +14,7 @@ import {
 import { Avatar, PageHeader, SampleBadge, StatusPill, EmptyState } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { GoalPlanner } from "@/components/goal-planner";
-import { AIUpdateReview } from "@/components/ai-review";
+import { AIUpdateReview, latestProcessedMeeting } from "@/components/ai-review";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,6 +49,13 @@ function BoardsPage() {
 
   const board = boards.find((b) => b.id === boardId);
   const boardLists = board ? lists.filter((l) => l.boardId === board.id) : [];
+  // Cards the AI added or moved from the latest meeting it read, highlighted on the board.
+  const latest = board ? latestProcessedMeeting(board, meetings) : undefined;
+  const aiChange = (t: Task): "new" | "updated" | undefined =>
+    !latest ? undefined
+      : t.aiAdded && t.sourceMeetingId === latest.id ? "new"
+      : proposals.some((p) => p.taskId === t.id && p.meetingId === latest.id && p.decision === "approved") ? "updated"
+      : undefined;
 
   const addBoard = useAction(createBoard);
   const delBoard = useAction(deleteBoard);
@@ -184,7 +191,7 @@ function BoardsPage() {
                 <div className="flex min-h-10 flex-col gap-2">
                   {cards.map((t) => (
                     <DraggableCard key={t.id} id={t.id} disabled={!me.canEdit}>
-                      <TaskCard task={t} dragging={dragId === t.id} onOpen={() => setEditing({ id: t.id, draft: t, notes: t.description, savedNotes: t.description })} />
+                      <TaskCard task={t} aiChange={aiChange(t)} dragging={dragId === t.id} onOpen={() => setEditing({ id: t.id, draft: t, notes: t.description, savedNotes: t.description })} />
                     </DraggableCard>
                   ))}
                 </div>
@@ -278,12 +285,13 @@ function DraggableCard({ id, disabled, children }: { id: string; disabled: boole
   );
 }
 
-function TaskCard({ task, dragging, onOpen }: { task: Task; dragging: boolean; onOpen: () => void }) {
+function TaskCard({ task, dragging, onOpen, aiChange }: { task: Task; dragging: boolean; onOpen: () => void; aiChange?: "new" | "updated" | undefined }) {
   return (
     <div
       onClick={onOpen}
-      className={cn("cursor-pointer select-none rounded-lg border bg-card p-3 shadow-card transition hover:border-primary/40", dragging && "opacity-40")}
+      className={cn("cursor-pointer select-none rounded-lg border bg-card p-3 shadow-card transition hover:border-primary/40", aiChange && "border-violet/60 ring-1 ring-violet/40", dragging && "opacity-40")}
     >
+      {aiChange && <span className="mb-1.5 inline-block rounded-full bg-violet px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">{aiChange === "new" ? "New" : "Updated"}</span>}
       <p className="text-sm font-medium leading-snug">{task.title}</p>
       {task.description && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{task.description}</p>}
       <div className="mt-2 flex flex-wrap items-center gap-1.5">

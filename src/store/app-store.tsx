@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from "@tansta
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { fetchMe, fetchMembers, fetchWorkspace, processMeeting } from "@/services/api";
+import { fetchMe, fetchMembers, fetchWorkspace, processMeeting, resetMeetingAI, updateMeetingTranscript } from "@/services/api";
 
 export const meQuery = { queryKey: ["me"], queryFn: fetchMe } as const;
 export const workspaceQuery = { queryKey: ["workspace"], queryFn: fetchWorkspace } as const;
@@ -38,10 +38,16 @@ export function useProcessMeeting() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [busyId, setBusyId] = useState<string | null>(null);
-  async function run(meetingId: string) {
+  async function run(meetingId: string, opts: { replaceTranscript?: string } = {}) {
     setBusyId(meetingId);
-    const id = toast.loading("Reading transcript… this takes about 20 seconds");
+    const id = toast.loading(opts.replaceTranscript !== undefined ? "Undoing the old transcript's changes…" : "Reading transcript… this takes about 20 seconds");
     try {
+      if (opts.replaceTranscript !== undefined) {
+        await resetMeetingAI(meetingId);
+        await updateMeetingTranscript(meetingId, opts.replaceTranscript);
+        await qc.invalidateQueries({ queryKey: ["workspace"] });
+        toast.loading("Reading the new transcript… this takes about 20 seconds", { id });
+      }
       const r = await processMeeting(meetingId);
       const parts = [
         `${r.added} task${r.added === 1 ? "" : "s"} added`,
