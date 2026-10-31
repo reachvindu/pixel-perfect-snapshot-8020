@@ -37,7 +37,7 @@ export function VoiceTaskBot({ boardId }: { boardId?: string | undefined }) {
 
   const commands = !!boardId && me.canEdit;
   const listIds = new Set(ws.lists.filter((l) => l.boardId === boardId).map((l) => l.id));
-  const taskCount = ws.tasks.filter((t) => listIds.has(t.listId)).length;
+  const taskCount = ws.tasks.filter((t) => listIds.has(t.listId) && t.status === "done").length; // what "clear" would remove
 
   async function run(actions: VoiceAction[]) {
     const done: string[] = [];
@@ -176,7 +176,7 @@ export function VoiceTaskBot({ boardId }: { boardId?: string | undefined }) {
           </ul>
           <DialogFooter>
             <Button variant="outline" onClick={cancel}>Cancel</Button>
-            <Button variant="destructive" onClick={() => void confirm()}>{pending.some((a) => a.type === "CLEAR") ? "Clear all" : "Confirm deletion"}</Button>
+            <Button variant="destructive" onClick={() => void confirm()}>{pending.some((a) => a.type === "CLEAR") ? "Clear completed" : "Confirm deletion"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

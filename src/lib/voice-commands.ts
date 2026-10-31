@@ -30,7 +30,7 @@ Each command has keys:
   "uncomplete" (reopen/undo/mark not done),
   "rename" (change an existing task's title),
   "delete" (remove one task),
-  "clear" (remove ALL tasks on this board),
+  "clear" (clear / remove the COMPLETED tasks on this board),
   "question" (the user is asking for information, a status or a summary — not changing anything),
   "unknown" (not about tasks or impossible to tell).
 - taskName: new task title for add; otherwise the EXACT title of the referenced existing task from the list (match fuzzy/partial references, "the last one", "the deck task", etc.), else null
@@ -97,7 +97,7 @@ export function parseVoiceReply(reply: unknown, tasks: VoiceTask[]): VoiceResult
 }
 
 /** One readable line per action, for the confirmation box and toasts. */
-export function describeVoiceAction(a: VoiceAction, boardTaskCount = 0) {
+export function describeVoiceAction(a: VoiceAction, completedCount = 0) {
   switch (a.type) {
     case "ADD": return `Add “${a.taskTitle}”${a.owner ? ` for ${a.owner}` : ""}`;
     case "COMPLETE": return `Mark “${a.taskTitle}” done`;
@@ -105,6 +105,6 @@ export function describeVoiceAction(a: VoiceAction, boardTaskCount = 0) {
     case "RENAME": return `Rename “${a.taskTitle}” to “${a.newTaskTitle}”`;
     case "ASSIGN": return `Assign “${a.taskTitle}” to ${[a.owner, a.team].filter(Boolean).join(" · ")}`;
     case "DELETE": return `Delete “${a.taskTitle}”`;
-    case "CLEAR": return `Delete all ${boardTaskCount} cards on this board`;
+    case "CLEAR": return `Delete the ${completedCount} completed card${completedCount === 1 ? "" : "s"} on this board`;
   }
 }

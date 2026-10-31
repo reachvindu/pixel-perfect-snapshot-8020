@@ -475,12 +475,12 @@ export async function askVoice(question: string, digest: string): Promise<string
   return body.answer ?? "";
 }
 
-/** Applies one voice action to this board. New cards go to the first list; done/reopen move the card to the matching list. */
+/** Applies one voice action to this board. New cards go to the first list; done/reopen move the card to the matching list; clear removes completed cards only. */
 export async function runVoiceAction(boardId: string, a: VoiceAction) {
   if (a.type === "ADD") return void (await addPlannedTasks(boardId, [{ title: a.taskTitle ?? "New task", owner: a.owner ?? null, deadline: null }]));
   if (a.type === "CLEAR") {
     const ids = check(await supabase.from("board_lists").select("id").eq("board_id", boardId)).map((l) => l.id);
-    if (ids.length) check(await supabase.from("tasks").delete().in("list_id", ids));
+    if (ids.length) check(await supabase.from("tasks").delete().in("list_id", ids).eq("status", "done"));
     return;
   }
   if (!a.taskId) throw new Error("No task selected.");

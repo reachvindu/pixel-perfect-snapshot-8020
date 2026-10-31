@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseVoiceReply, voiceUserMessage } from "@/lib/voice-commands";
+import { describeVoiceAction, parseVoiceReply, voiceUserMessage } from "@/lib/voice-commands";
 
 const tasks = [
   { id: "t1", title: "Draft pitch deck outline", status: "todo", owner: "" },
@@ -50,6 +50,10 @@ describe("parseVoiceReply", () => {
     expect(r.actions.map((a) => a.type)).toEqual(["DELETE", "CLEAR"]);
     expect(r.actions[0]!.taskId).toBe("t2");
     expect(r.skipped).toHaveLength(1);
+  });
+
+  it("describes clear as removing completed cards only", () => {
+    expect(describeVoiceAction({ type: "CLEAR" }, 3)).toBe("Delete the 3 completed cards on this board");
   });
 
   it("numbers the board's cards for the model", () => {
