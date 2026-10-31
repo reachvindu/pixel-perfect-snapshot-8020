@@ -6,6 +6,7 @@ import { getForgottenCommitments } from "@/lib/commitments";
 import { formatDate } from "@/lib/constants";
 import { deadlineState, dueThisWeek } from "@/lib/deadlines";
 import { AddTranscriptButton } from "@/components/add-transcript";
+import { hasUnseenUpdate } from "@/components/ai-review";
 
 export const Route = createFileRoute("/_authenticated/_shell/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — Planova" }, { name: "description", content: "Team overview of meetings and tasks." }] }),
@@ -13,12 +14,12 @@ export const Route = createFileRoute("/_authenticated/_shell/dashboard")({
 });
 
 function Dashboard() {
-  const { meetings, tasks, proposals } = useWorkspace();
+  const { meetings, tasks, boards } = useWorkspace();
   const forgotten = getForgottenCommitments(tasks, meetings);
   const open = tasks.filter((t) => t.status !== "done").length;
   const done = tasks.length - open;
   const recent = meetings.slice(0, 5);
-  const pending = proposals.filter((p) => p.decision === "pending").length;
+  const unseen = boards.filter((b) => hasUnseenUpdate(b, meetings));
   const overdue = tasks.filter((t) => deadlineState(t) === "overdue").length;
   const dueSoon = dueThisWeek(tasks).slice(0, 6);
 
@@ -57,10 +58,13 @@ function Dashboard() {
         <section className="rounded-xl border bg-card p-5 shadow-card">
           <h2 className="text-sm font-semibold">Needs your attention</h2>
           <div className="mt-4 space-y-3">
-            <Link to="/follow-through" className="block rounded-lg border p-4 transition-colors hover:bg-muted">
-              <div className="text-2xl font-semibold text-violet">{pending}</div>
-              <div className="text-sm text-muted-foreground">AI status updates to review</div>
-            </Link>
+            <div className="rounded-lg border p-4">
+              <div className="text-2xl font-semibold text-violet">{unseen.length}</div>
+              <div className="text-sm text-muted-foreground">Boards with new AI updates to review</div>
+              {unseen.map((b) => (
+                <Link key={b.id} to="/tasks" search={{ board: b.id }} className="mt-1 block truncate text-sm font-medium text-primary hover:underline">{b.name} →</Link>
+              ))}
+            </div>
             <Link to="/forgotten" className="block rounded-lg border p-4 transition-colors hover:bg-muted">
               <div className="text-2xl font-semibold text-warning">{forgotten.length}</div>
               <div className="text-sm text-muted-foreground">Commitments not mentioned since</div>

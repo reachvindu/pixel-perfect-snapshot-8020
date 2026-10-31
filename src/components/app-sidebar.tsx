@@ -14,7 +14,7 @@ const main: Item[] = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Meetings", url: "/meetings", icon: Video },
   { title: "Boards", url: "/tasks", icon: KanbanSquare },
-  { title: "Follow-Through", url: "/follow-through", icon: CheckCheck },
+  { title: "AI Activity", url: "/follow-through", icon: CheckCheck },
   { title: "Forgotten", url: "/forgotten", icon: AlarmClock },
 ];
 const workspace: Item[] = [

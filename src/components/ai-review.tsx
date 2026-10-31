@@ -11,7 +11,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import type { AIProposal, Board, BoardList, Meeting, Task } from "@/types";
 
 const storageKey = (meetingId: string) => `ai-review-seen:${meetingId}`;
-const wasSeen = (id: string) => { try { return localStorage.getItem(storageKey(id)) === "1"; } catch { return false; } };
+export const wasSeen = (id: string) => { try { return localStorage.getItem(storageKey(id)) === "1"; } catch { return false; } };
 const markSeen = (id: string) => { try { localStorage.setItem(storageKey(id), "1"); } catch { /* private mode */ } };
 
 /** Summary of what the AI changed on this board from the series' latest processed meeting, with undo. */
@@ -23,6 +23,12 @@ export function latestProcessedMeeting(board: Board, meetings: Meeting[]) {
   return meetings
     .filter((m) => m.processedAt && sameName(m.seriesName, series))
     .sort((a, b) => (b.processedAt ?? "").localeCompare(a.processedAt ?? ""))[0];
+}
+
+/** True when the board's latest AI update hasn't been reviewed in this browser yet. */
+export function hasUnseenUpdate(board: Board, meetings: Meeting[]) {
+  const latest = latestProcessedMeeting(board, meetings);
+  return !!latest && !wasSeen(latest.id);
 }
 
 export function AIUpdateReview(props: Props) {
@@ -44,7 +50,9 @@ function ReviewPanel({ latest, lists, tasks, meetings, proposals, canEdit }: Pro
   const notMentioned = getForgottenCommitments(boardTasks, meetings).filter((f) => f.lastMeeting.id !== latest.id);
 
   const close = () => { markSeen(latest.id); setSeen(true); setOpen(false); };
-  const summary = `${added.length} added · ${moved.filter((p) => p.decision === "approved").length} moved · ${notMentioned.length} not mentioned`;
+  const applied = moved.filter((p) => p.decision === "approved").length;
+  const undoneCount = moved.length - applied;
+  const summary = `${added.length} added · ${applied} moved${undoneCount ? ` (${undoneCount} undone)` : ""} · ${notMentioned.length} not mentioned`;
 
   return (
     <>
@@ -62,7 +70,7 @@ function ReviewPanel({ latest, lists, tasks, meetings, proposals, canEdit }: Pro
             <SheetDescription>{formatDate(latest.date)} · {summary}. Changed cards are highlighted on the board.</SheetDescription>
           </SheetHeader>
         <div className="mt-4 space-y-5">
-            <Group title="Moved" empty="No status changes were found in this meeting.">
+            <Group title="Moved" count={undoneCount ? `${applied} · ${undoneCount} undone` : undefined} empty="No status changes were found in this meeting.">
               {moved.map((p) => {
                 const t = taskById.get(p.taskId)!;
                 const undone = p.decision === "rejected";
@@ -113,10 +121,10 @@ function ReviewPanel({ latest, lists, tasks, meetings, proposals, canEdit }: Pro
   );
 }
 
-function Group({ title, empty, children }: { title: string; empty: string; children: ReactNode[] }) {
+function Group({ title, count, empty, children }: { title: string; count?: string | undefined; empty: string; children: ReactNode[] }) {
   return (
     <div>
-      <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title} ({children.length})</h3>
+      <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title} ({count ?? children.length})</h3>
       {children.length ? <div className="space-y-1.5">{children}</div> : <p className="text-sm text-muted-foreground">{empty}</p>}
     </div>
   );

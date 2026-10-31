@@ -14,7 +14,7 @@ import {
 import { Avatar, PageHeader, SampleBadge, StatusPill, EmptyState } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { GoalPlanner } from "@/components/goal-planner";
-import { AIUpdateReview, latestProcessedMeeting } from "@/components/ai-review";
+import { AIUpdateReview, hasUnseenUpdate, latestProcessedMeeting } from "@/components/ai-review";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -170,6 +170,7 @@ function BoardsPage() {
                 </div>
                 <p className="line-clamp-2 text-sm text-muted-foreground">{b.description || "No description yet."}</p>
                 <p className="text-xs text-muted-foreground">{b.seriesName && <>Series: {b.seriesName} · </>}{listIds.size} lists · {count} cards</p>
+                {hasUnseenUpdate(b, meetings) && <span className="w-fit rounded-full bg-violet px-2 py-0.5 text-[11px] font-semibold text-white">AI update · New</span>}
                 {b.isSample && <SampleBadge />}
               </button>
             );
