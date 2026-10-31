@@ -60,31 +60,6 @@ Action rules:
 - If readOnly is true, never return actions; explain that only editors and admins can make changes.
 - reply: one or two friendly sentences describing what you did (past tense) or the answer. Plain text, no markdown.`;
 
-const PLAN_SCHEMA = {
-  type: "object",
-  additionalProperties: false,
-  required: ["summary", "tasks"],
-  properties: {
-    summary: { type: "string" },
-    tasks: {
-      type: "array",
-      items: {
-        type: "object",
-        additionalProperties: false,
-        required: ["title", "owner", "deadline"],
-        properties: { title: { type: "string" }, owner: nullableString, deadline: nullableString },
-      },
-    },
-  },
-};
-
-const PLAN_INSTRUCTIONS = `You are Planova's planning assistant. The user describes a goal. Break it into 4-10 concrete, actionable task cards, in the order they should be done.
-- Each title starts with a verb and is under 80 characters ("Draft launch email", not "Email").
-- owner: only if the user named who should do it (or a teammate already appears as an owner in the workspace and clearly fits); otherwise null.
-- deadline: YYYY-MM-DD only if the user gave a timeframe; spread dates sensibly up to that date, starting after today. Otherwise null.
-- Don't duplicate cards already on the board.
-- summary: one short sentence describing the plan. Plain text.`;
-
 type ChatMsg = { role: "user" | "assistant"; content: string };
 
 export const Route = createFileRoute("/api/assistant")({
@@ -114,7 +89,7 @@ export const Route = createFileRoute("/api/assistant")({
         if (!approved) return json(403, { error: "Your account is waiting for admin approval." });
         const { data: canEdit } = await supabase.rpc("can_edit", { _user_id: userData.user.id });
 
-        let body: { messages?: ChatMsg[]; workspace?: unknown; currentBoardId?: string | null; mode?: "chat" | "plan" };
+        let body: { messages?: ChatMsg[]; workspace?: unknown; currentBoardId?: string | null };
         try { body = await request.json(); } catch { return json(400, { error: "Invalid request." }); }
         const messages = (body.messages ?? [])
           .filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
@@ -133,11 +108,6 @@ export const Route = createFileRoute("/api/assistant")({
         }).slice(0, 120_000);
 
         const input = [{ role: "developer", content: `Current state:\n${context}` }, ...messages];
-        if (body.mode === "plan") {
-          if (!canEdit) return json(403, { error: "Only editors and admins can add cards." });
-          const r = await callModel(apiKey, PLAN_INSTRUCTIONS, input, "goal_plan", PLAN_SCHEMA, request.signal);
-          return json(r.status, r.ok ? r.value : { error: r.error });
-        }
         const r = await callModel(apiKey, INSTRUCTIONS, input, "board_actions", SCHEMA, request.signal);
         if (!r.ok) return json(r.status, { error: r.error });
         const parsed = r.value as { actions: unknown[] };

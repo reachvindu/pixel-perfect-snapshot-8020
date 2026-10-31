@@ -13,7 +13,6 @@ import {
 } from "@/services/api";
 import { Avatar, PageHeader, SampleBadge, StatusPill, EmptyState } from "@/components/shared";
 import { Button } from "@/components/ui/button";
-import { GoalPlanner } from "@/components/goal-planner";
 import { VoiceTaskBot } from "@/components/voice-task-bot";
 import { AddTranscriptButton } from "@/components/add-transcript";
 import { AIUpdateReview, hasUnseenUpdate, latestProcessedMeeting } from "@/components/ai-review";
@@ -145,7 +144,6 @@ function BoardsPage() {
         actions={
           <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             {board && <Button variant="ghost" onClick={() => setBoardId(null)}><ArrowLeft /> All boards</Button>}
-            {me.canEdit && <GoalPlanner key={`goal:${board?.id ?? "all"}`} boards={boards} defaultBoardId={board?.id ?? null} />}
             {me.canEdit && board && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild><Button variant="outline" size="icon" aria-label="Board options"><MoreHorizontal /></Button></DropdownMenuTrigger>

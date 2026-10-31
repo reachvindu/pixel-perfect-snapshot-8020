@@ -330,21 +330,7 @@ async function assistantSnapshot() {
 
 export type PlannedTask = { title: string; owner: string | null; deadline: string | null };
 
-/** Asks the AI to break a goal into cards for the given board (not saved yet). */
-export async function planGoal(goal: string, boardId: string): Promise<{ summary: string; tasks: PlannedTask[] }> {
-  const workspace = await assistantSnapshot();
-  const { data } = await supabase.auth.getSession();
-  const res = await fetch("/api/assistant", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session?.access_token ?? ""}` },
-    body: JSON.stringify({ mode: "plan", messages: [{ role: "user", content: goal }], workspace, currentBoardId: boardId }),
-  });
-  const body = (await res.json().catch(() => ({}))) as { summary?: string; tasks?: PlannedTask[]; error?: string };
-  if (!res.ok) throw new Error(body.error ?? `Planning failed (${res.status})`);
-  return { summary: body.summary ?? "", tasks: body.tasks ?? [] };
-}
-
-/** Adds the chosen planned cards to the board's first (To Do) list. */
+/** Adds cards to the board's first list (used by the voice assistant). */
 export async function addPlannedTasks(boardId: string, tasks: PlannedTask[]) {
   const ws = await fetchWorkspace();
   const list = ws.lists.filter((l) => l.boardId === boardId).sort((a, b) => a.position - b.position)[0];
