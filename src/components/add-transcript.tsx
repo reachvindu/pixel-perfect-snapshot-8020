@@ -16,7 +16,7 @@ import type { MeetingPlatform } from "@/types";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const append = (prev: string, text: string) => (prev ? `${prev.trimEnd()}\n${text}` : text);
-const blank = () => ({ title: "", date: today(), series: "", link: "", platform: "zoom" as MeetingPlatform, transcript: "" });
+const blank = () => ({ kind: "new" as "new" | "existing", title: "", date: today(), series: "", link: "", platform: "zoom" as MeetingPlatform, transcript: "" });
 
 /** "+ Add transcript": log any meeting (even unscheduled), link it to a series, and let AI put its tasks on the series board. */
 export function AddTranscriptButton() {
@@ -31,7 +31,7 @@ export function AddTranscriptButton() {
 
   const seriesNames = [...new Map(meetings.map((m) => [m.seriesName.toLowerCase(), m.seriesName])).values()].filter(Boolean);
   const linkOk = !form.link.trim() || /^https?:\/\/\S+$/.test(form.link.trim());
-  const canSave = form.title.trim() && form.date && form.transcript.trim() && linkOk && !saving;
+  const canSave = form.title.trim() && (form.kind === "new" || form.series) && form.date && form.transcript.trim() && linkOk && !saving;
 
   async function readFile(file: File | undefined) {
     if (!file) return;
@@ -44,7 +44,7 @@ export function AddTranscriptButton() {
     try {
       const id = await createMeeting({
         title: form.title.trim(), date: form.date, link: form.link.trim(), platform: form.platform,
-        transcript: form.transcript, seriesName: form.series.trim() || form.title.trim(),
+        transcript: form.transcript, seriesName: form.kind === "existing" ? form.series : form.title.trim(),
       });
       await qc.invalidateQueries({ queryKey: ["workspace"] });
       setOpen(false);
@@ -67,22 +67,37 @@ export function AddTranscriptButton() {
             <DialogDescription>AI reads it and puts the action items on the board for this meeting series.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Is this a new meeting or part of a series?</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {([["new", "New meeting", "Starts its own board"], ["existing", "Existing series", "Adds to that series' board"]] as const).map(([k, label, hint]) => (
+                  <button key={k} type="button" disabled={k === "existing" && seriesNames.length === 0}
+                    onClick={() => setForm({ ...form, kind: k, series: k === "new" ? "" : form.series })}
+                    className={`rounded-lg border p-3 text-left transition-colors disabled:opacity-50 ${form.kind === k ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-muted"}`}>
+                    <div className="text-sm font-medium">{label}</div>
+                    <div className="text-xs text-muted-foreground">{hint}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+            {form.kind === "existing" && (
+              <div className="space-y-1.5">
+                <Label>Meeting series</Label>
+                <Select value={form.series} onValueChange={(v) => setForm({ ...form, series: v, title: form.title || v })}>
+                  <SelectTrigger><SelectValue placeholder="Pick a series…">{form.series || undefined}</SelectValue></SelectTrigger>
+                  <SelectContent>{seriesNames.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="at-title">Meeting name</Label>
-                <Input id="at-title" autoFocus value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Hackathon Team Sync" />
+                <Input id="at-title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Hackathon Team Sync" />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="at-date">Date</Label>
                 <Input id="at-date" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
               </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="at-series">Meeting series</Label>
-              <Input id="at-series" list="at-series-options" value={form.series} onChange={(e) => setForm({ ...form, series: e.target.value })}
-                placeholder={form.title.trim() ? `New series: ${form.title.trim()}` : "Pick an existing series or type a new one"} />
-              <datalist id="at-series-options">{seriesNames.map((s) => <option key={s} value={s} />)}</datalist>
-              <p className="text-xs text-muted-foreground">Meetings in the same series share one board. Leave empty to start a new series named after this meeting.</p>
             </div>
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">

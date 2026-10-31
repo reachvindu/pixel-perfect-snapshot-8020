@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { ChevronDown, ExternalLink, FilePen, FileText, KanbanSquare, Mic, MoreHorizontal, RefreshCw, Sparkles, Trash2, Upload } from "lucide-react";
+import { Search, ChevronDown, ExternalLink, FilePen, FileText, KanbanSquare, Mic, MoreHorizontal, RefreshCw, Sparkles, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useAction, useMe, useProcessMeeting, useWorkspace } from "@/store/app-store";
 import { deleteMeeting, updateMeetingTranscript } from "@/services/api";
@@ -9,6 +9,7 @@ import { LiveTranscriber } from "@/components/live-transcriber";
 import { AddTranscriptButton } from "@/components/add-transcript";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -33,6 +34,7 @@ function MeetingsPage() {
   const [live, setLive] = useState<Meeting | null>(null);
   const [replacing, setReplacing] = useState<Meeting | null>(null);
   const [shown, setShown] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
 
   // One group per series, most recently active first; meetings newest first inside.
   const groups = new Map<string, Meeting[]>();
@@ -40,15 +42,25 @@ function MeetingsPage() {
     const key = m.seriesName.trim().toLowerCase();
     groups.set(key, [...(groups.get(key) ?? []), m]);
   }
-  const series = [...groups.values()]
+  const q = query.trim().toLowerCase();
+  const allSeries = [...groups.values()]
     .map((ms) => ms.sort((a, b) => b.date.localeCompare(a.date)))
     .sort((a, b) => b[0]!.date.localeCompare(a[0]!.date));
+  // Search matches a series name or any meeting title in it.
+  const series = q ? allSeries.filter((ms) => ms.some((m) => m.seriesName.toLowerCase().includes(q) || m.title.toLowerCase().includes(q))) : allSeries;
   const forgotten = getForgottenCommitments(tasks, meetings);
 
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader title="Meetings" description="Meetings grouped by series. Each series feeds its own board." actions={<AddTranscriptButton />} />
-      {series.length === 0 && <EmptyState>No meetings yet. Click “Add transcript” to add your first one.</EmptyState>}
+      {allSeries.length > 0 && (
+        <div className="relative mb-4">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search meeting series or meetings…" className="pl-9" aria-label="Search meetings" />
+        </div>
+      )}
+      {allSeries.length === 0 && <EmptyState>No meetings yet. Click “Add transcript” to add your first one.</EmptyState>}
+      {allSeries.length > 0 && series.length === 0 && <EmptyState>No series or meetings match “{query}”.</EmptyState>}
       <div className="space-y-3">
         {series.map((ms, i) => {
           const name = ms[0]!.seriesName;
@@ -57,7 +69,7 @@ function MeetingsPage() {
           const open = tasks.filter((t) => listIds.has(t.listId) && t.status !== "done").length;
           const lost = forgotten.filter((f) => listIds.has(f.task.listId)).length;
           return (
-            <Collapsible key={name} defaultOpen={i === 0} className="group/series rounded-xl border bg-card shadow-card">
+            <Collapsible key={`${name}:${q ? "q" : ""}`} defaultOpen={i === 0 || !!q} className="group/series rounded-xl border bg-card shadow-card">
               <div className="flex flex-wrap items-center gap-3 p-4">
                 <CollapsibleTrigger className="flex min-w-0 flex-1 items-center gap-2 text-left">
                   <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-data-[state=closed]/series:-rotate-90" />
