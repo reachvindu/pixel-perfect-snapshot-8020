@@ -107,6 +107,7 @@ export type Database = {
           id: string
           is_sample: boolean
           name: string
+          series_name: string
         }
         Insert: {
           created_at?: string
@@ -114,6 +115,7 @@ export type Database = {
           id?: string
           is_sample?: boolean
           name: string
+          series_name?: string
         }
         Update: {
           created_at?: string
@@ -121,6 +123,7 @@ export type Database = {
           id?: string
           is_sample?: boolean
           name?: string
+          series_name?: string
         }
         Relationships: []
       }
@@ -133,6 +136,8 @@ export type Database = {
           is_sample: boolean
           link: string
           platform: Database["public"]["Enums"]["meeting_platform"]
+          processed_at: string | null
+          series_name: string
           title: string
           transcript: string
         }
@@ -144,6 +149,8 @@ export type Database = {
           is_sample?: boolean
           link: string
           platform: Database["public"]["Enums"]["meeting_platform"]
+          processed_at?: string | null
+          series_name?: string
           title: string
           transcript?: string
         }
@@ -155,6 +162,8 @@ export type Database = {
           is_sample?: boolean
           link?: string
           platform?: Database["public"]["Enums"]["meeting_platform"]
+          processed_at?: string | null
+          series_name?: string
           title?: string
           transcript?: string
         }
@@ -186,8 +195,10 @@ export type Database = {
       }
       tasks: {
         Row: {
+          ai_added: boolean
           created_at: string
           deadline: string | null
+          description: string
           id: string
           is_sample: boolean
           last_mentioned_meeting_id: string | null
@@ -199,8 +210,10 @@ export type Database = {
           title: string
         }
         Insert: {
+          ai_added?: boolean
           created_at?: string
           deadline?: string | null
+          description?: string
           id?: string
           is_sample?: boolean
           last_mentioned_meeting_id?: string | null
@@ -212,8 +225,10 @@ export type Database = {
           title: string
         }
         Update: {
+          ai_added?: boolean
           created_at?: string
           deadline?: string | null
+          description?: string
           id?: string
           is_sample?: boolean
           last_mentioned_meeting_id?: string | null
@@ -295,6 +310,10 @@ export type Database = {
       }
       is_approved: { Args: { _user_id: string }; Returns: boolean }
       update_my_name: { Args: { _name: string }; Returns: undefined }
+      update_task_description: {
+        Args: { _description: string; _task_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "editor" | "viewer"
