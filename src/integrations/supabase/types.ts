@@ -199,6 +199,7 @@ export type Database = {
           created_at: string
           deadline: string | null
           description: string
+          dropped_at: string | null
           id: string
           is_sample: boolean
           last_mentioned_meeting_id: string | null
@@ -207,6 +208,7 @@ export type Database = {
           position: number
           source_meeting_id: string | null
           status: Database["public"]["Enums"]["task_status"]
+          team: string
           title: string
         }
         Insert: {
@@ -214,6 +216,7 @@ export type Database = {
           created_at?: string
           deadline?: string | null
           description?: string
+          dropped_at?: string | null
           id?: string
           is_sample?: boolean
           last_mentioned_meeting_id?: string | null
@@ -222,6 +225,7 @@ export type Database = {
           position?: number
           source_meeting_id?: string | null
           status?: Database["public"]["Enums"]["task_status"]
+          team?: string
           title: string
         }
         Update: {
@@ -229,6 +233,7 @@ export type Database = {
           created_at?: string
           deadline?: string | null
           description?: string
+          dropped_at?: string | null
           id?: string
           is_sample?: boolean
           last_mentioned_meeting_id?: string | null
@@ -237,6 +242,7 @@ export type Database = {
           position?: number
           source_meeting_id?: string | null
           status?: Database["public"]["Enums"]["task_status"]
+          team?: string
           title?: string
         }
         Relationships: [
