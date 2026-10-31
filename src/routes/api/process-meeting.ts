@@ -41,7 +41,9 @@ Return three things:
    - evidence: the exact sentence from the transcript.
    - Do NOT add anything that duplicates an open task (same work, even if worded differently) — that is a status update or a mention instead.
 2. status_updates: for open tasks whose status clearly changed in this meeting. Use only task ids from the open tasks list, and only when the new status differs from the current one.
-   - proposed_status: todo | in_progress (started / working on it / partly done) | blocked (stuck, waiting on someone, on hold) | done (finished, shipped, sent).
+   - proposed_status: todo | in_progress (started / working on it / partly done / "halfway") | blocked (stuck, waiting on someone or something, on hold, delayed) | done (finished, completed, sent, shared, shipped, deployed, submitted, recorded, "that's sorted").
+   - People rarely use the task's exact words: match updates to open tasks by meaning ("the deck is ready" → "Finish and export the pitch deck").
+   - Include a status update whenever a speaker reports progress on an open task; it will be applied to the board and the lead can undo it.
    - evidence: the exact quote. confidence: 0 to 1.
 3. mentioned_task_ids: ids of EVERY open task that was discussed in this meeting at all, including ones whose status didn't change.
 Never invent people, dates, tasks or quotes. If nothing fits a section, return an empty array.`;

@@ -1,14 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ArrowRight, Check, CheckCheck, Quote, X } from "lucide-react";
+import { ArrowRight, Check, CheckCheck, Quote, Undo2, X } from "lucide-react";
 import { useAction, useMe, useWorkspace } from "@/store/app-store";
-import { approveAllProposals, decideProposal } from "@/services/api";
+import { approveAllProposals, decideProposal, undoProposal } from "@/services/api";
 import { EmptyState, PageHeader, SampleBadge, StatusPill } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/constants";
 import type { AIProposal } from "@/types";
 
 export const Route = createFileRoute("/_authenticated/_shell/follow-through")({
-  head: () => ({ meta: [{ title: "Follow-Through — Planova" }, { name: "description", content: "Review AI-proposed task status changes." }] }),
+  head: () => ({ meta: [{ title: "Follow-Through — Planova" }, { name: "description", content: "History of task status changes the AI made from meetings." }] }),
   component: FollowThrough,
 });
 
@@ -17,6 +17,7 @@ function FollowThrough() {
   const me = useMe();
   const decide = useAction(decideProposal);
   const approveAll = useAction(approveAllProposals);
+  const undo = useAction(undoProposal);
   const pending = proposals.filter((p) => p.decision === "pending");
   const decided = proposals.filter((p) => p.decision !== "pending");
 
@@ -47,9 +48,14 @@ function FollowThrough() {
             </div>
           ) : <p className="mt-4 text-xs text-muted-foreground">Editors and admins can approve updates.</p>
         ) : (
-          <p className={`mt-4 text-xs font-medium ${p.decision === "approved" ? "text-success" : "text-destructive"}`}>
-            {p.decision === "approved" ? "Approved — task updated" : "Rejected — task unchanged"}
-          </p>
+          <div className="mt-4 flex items-center gap-3">
+            <p className={`text-xs font-medium ${p.decision === "approved" ? "text-success" : "text-muted-foreground"}`}>
+              {p.decision === "approved" ? "Applied to the board" : "Undone / rejected — task unchanged"}
+            </p>
+            {p.decision === "approved" && me.canEdit && !p.isSample && (
+              <Button size="sm" variant="outline" disabled={undo.pending} onClick={() => void undo.run(p)}><Undo2 /> Undo</Button>
+            )}
+          </div>
         )}
       </div>
     );
@@ -57,17 +63,17 @@ function FollowThrough() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <PageHeader title="Follow-Through" description="Proposed status updates based on later meetings. Approving updates the task and moves its card."
+      <PageHeader title="Follow-Through" description="Every status change the AI made from your meetings, with the quote it was based on. Undo anything that's wrong."
         actions={me.canEdit && pending.length > 1 ? (
           <Button disabled={approveAll.pending || decide.pending} onClick={() => { if (confirm(`Approve all ${pending.length} updates?`)) void approveAll.run(pending); }}>
             <CheckCheck /> {approveAll.pending ? "Approving…" : `Approve all (${pending.length})`}
           </Button>
         ) : undefined} />
-      <div className="space-y-4">{pending.length === 0 ? <EmptyState>Nothing to review right now.</EmptyState> : pending.map((p) => card(p, true))}</div>
+      <div className="space-y-4">{pending.length === 0 ? <EmptyState>Nothing waiting for approval — the AI applies updates straight to the board.</EmptyState> : pending.map((p) => card(p, true))}</div>
       {decided.length > 0 && (
         <>
-          <h2 className="mb-3 mt-8 text-sm font-semibold text-muted-foreground">Reviewed</h2>
-          <div className="space-y-4 opacity-80">{decided.map((p) => card(p, false))}</div>
+          <h2 className="mb-3 mt-8 text-sm font-semibold text-muted-foreground">History</h2>
+          <div className="space-y-4">{[...decided].reverse().map((p) => card(p, false))}</div>
         </>
       )}
     </div>

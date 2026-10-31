@@ -44,12 +44,13 @@ export function useProcessMeeting() {
     try {
       const r = await processMeeting(meetingId);
       const parts = [
-        `${r.added} new task${r.added === 1 ? "" : "s"} added`,
-        `${r.proposed} status update${r.proposed === 1 ? "" : "s"} to review`,
+        `${r.added} task${r.added === 1 ? "" : "s"} added`,
+        `${r.moved} moved`,
+        `${r.mentioned} discussed`,
       ];
       toast.success(`Done — ${parts.join(", ")}`, {
         id, description: `Board: ${r.boardName}`, duration: 8000,
-        action: { label: "Open board", onClick: () => void navigate({ to: "/tasks", search: { board: r.boardId } }) },
+        action: { label: "Review on board", onClick: () => void navigate({ to: "/tasks", search: { board: r.boardId } }) },
       });
     } catch (e) {
       toast.error((e as Error).message || "Couldn't read the transcript. Please try again.", { id });

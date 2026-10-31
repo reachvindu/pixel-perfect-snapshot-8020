@@ -14,6 +14,7 @@ import {
 import { Avatar, PageHeader, SampleBadge, StatusPill, EmptyState } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { GoalPlanner } from "@/components/goal-planner";
+import { AIUpdateReview } from "@/components/ai-review";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,7 +33,7 @@ export const Route = createFileRoute("/_authenticated/_shell/tasks")({
 });
 
 function BoardsPage() {
-  const { boards, lists, tasks, meetings } = useWorkspace();
+  const { boards, lists, tasks, meetings, proposals } = useWorkspace();
   const me = useMe();
   const boardId = Route.useSearch().board ?? null;
   const navigate = useNavigate({ from: Route.fullPath });
@@ -168,6 +169,8 @@ function BoardsPage() {
           })}
         </div>
       ) : (
+        <>
+        <AIUpdateReview board={board} lists={boardLists} tasks={tasks} meetings={meetings} proposals={proposals} canEdit={me.canEdit} />
         <DndContext sensors={sensors} collisionDetection={closestCorners}
           onDragStart={(e) => setDragId(String(e.active.id))} onDragCancel={() => setDragId(null)} onDragEnd={onDragEnd}>
         <div className="-mx-4 flex flex-1 snap-x items-start gap-3 overflow-x-auto px-4 pb-4 sm:gap-4 md:-mx-8 md:px-8">
@@ -197,6 +200,7 @@ function BoardsPage() {
         </div>
         <DragOverlay>{dragId ? (() => { const t = tasks.find((x) => x.id === dragId); return t ? <div className="w-[min(18rem,80vw)] rotate-2"><TaskCard task={t} dragging={false} onOpen={() => {}} /></div> : null; })() : null}</DragOverlay>
         </DndContext>
+        </>
       )}
 
       <Dialog open={newBoard !== null} onOpenChange={(o) => !o && setNewBoard(null)}>

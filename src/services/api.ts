@@ -152,18 +152,26 @@ export async function updateTaskDescription(id: string, description: string) {
 }
 
 /* AI proposals */
-export async function decideProposal(p: AIProposal, approve: boolean) {
-  check(await supabase.from("ai_proposals").update({ decision: approve ? "approved" : "rejected" }).eq("id", p.id));
-  if (!approve) return;
-  // Also move the card to the list that matches its new status (e.g. done → Completed).
-  const task = check(await supabase.from("tasks").select("list_id").eq("id", p.taskId).single());
+/** Sets a task's status and moves its card to the board list that matches (e.g. done → Completed). */
+export async function setTaskStatus(taskId: string, status: TaskStatus, extra: Partial<TaskInput> = {}) {
+  const task = check(await supabase.from("tasks").select("list_id").eq("id", taskId).single());
   const current = check(await supabase.from("board_lists").select("board_id").eq("id", task.list_id).single());
   const lists = check(await supabase.from("board_lists").select("id, name").eq("board_id", current.board_id).order("position"));
-  const target = lists.find((l) => statusForListName(l.name) === p.proposedStatus);
+  const target = lists.find((l) => statusForListName(l.name) === status);
   const move = target && target.id !== task.list_id
     ? { listId: target.id, position: check(await supabase.from("tasks").select("id").eq("list_id", target.id)).length }
     : {};
-  await updateTask(p.taskId, { status: p.proposedStatus as TaskStatus, lastMentionedMeetingId: p.meetingId, ...move });
+  await updateTask(taskId, { status, ...extra, ...move });
+}
+
+export async function decideProposal(p: AIProposal, approve: boolean) {
+  check(await supabase.from("ai_proposals").update({ decision: approve ? "approved" : "rejected" }).eq("id", p.id));
+  if (approve) await setTaskStatus(p.taskId, p.proposedStatus, { lastMentionedMeetingId: p.meetingId });
+}
+/** Reverts a status change the AI applied: the card goes back to its previous status and list. */
+export async function undoProposal(p: AIProposal) {
+  check(await supabase.from("ai_proposals").update({ decision: "rejected" }).eq("id", p.id));
+  await setTaskStatus(p.taskId, p.currentStatus);
 }
 export async function approveAllProposals(ps: AIProposal[]) {
   for (const p of ps) await decideProposal(p, true);
@@ -175,7 +183,7 @@ type MeetingAnalysis = {
   status_updates: { task_id: string; proposed_status: TaskStatus; evidence: string; confidence: number }[];
   mentioned_task_ids: string[];
 };
-export type ProcessResult = { boardId: string; boardName: string; added: number; proposed: number; mentioned: number };
+export type ProcessResult = { boardId: string; boardName: string; added: number; moved: number; mentioned: number };
 
 /** Reads a meeting's transcript with AI: adds new action items to its series board, proposes status updates, and records which open tasks were discussed. */
 export async function processMeeting(meetingId: string): Promise<ProcessResult> {
@@ -212,16 +220,18 @@ export async function processMeeting(meetingId: string): Promise<ProcessResult> 
     }))));
   }
 
-  const already = new Set(ws.proposals.filter((p) => p.meetingId === meetingId && p.decision === "pending").map((p) => p.taskId));
+  const already = new Set(ws.proposals.filter((p) => p.meetingId === meetingId).map((p) => p.taskId));
   const updates = (body.status_updates ?? []).filter((u) => {
     const t = open.get(u.task_id);
     return t && t.status !== u.proposed_status && !already.has(t.id);
   });
+  // Status changes are applied straight away (and logged) — the lead reviews them on the board and can undo.
   if (updates.length) {
     check(await supabase.from("ai_proposals").insert(updates.map((u) => ({
       task_id: u.task_id, meeting_id: meetingId, current_status: open.get(u.task_id)!.status, proposed_status: u.proposed_status,
-      evidence: u.evidence.slice(0, 1000), confidence: Math.min(1, Math.max(0, Number(u.confidence) || 0.5)),
+      evidence: u.evidence.slice(0, 1000), confidence: Math.min(1, Math.max(0, Number(u.confidence) || 0.5)), decision: "approved" as const,
     }))));
+    for (const u of updates) await setTaskStatus(u.task_id, u.proposed_status);
   }
 
   // Remember which open tasks this meeting discussed (only move forward in time).
@@ -234,7 +244,7 @@ export async function processMeeting(meetingId: string): Promise<ProcessResult> 
   if (mentioned.length) check(await supabase.from("tasks").update({ last_mentioned_meeting_id: meetingId }).in("id", mentioned));
 
   check(await supabase.from("meetings").update({ processed_at: new Date().toISOString() }).eq("id", meetingId));
-  return { boardId, boardName: board.name, added: items.length, proposed: updates.length, mentioned: mentioned.length };
+  return { boardId, boardName: board.name, added: items.length, moved: updates.length, mentioned: mentioned.length };
 }
 
 /* ---------- admin ---------- */
