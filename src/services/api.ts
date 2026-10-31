@@ -5,6 +5,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { AssistantAction, AssistantResult } from "@/lib/assistant-actions";
 import { sameName, statusForListName } from "@/lib/assistant-actions";
+import type { VoiceAction, VoiceResult } from "@/lib/voice-commands";
 import type { TablesUpdate } from "@/integrations/supabase/types";
 import type {
   AIProposal, AppRole, Board, BoardList, Meeting, Member, MemberStatus, Task, TaskStatus,
@@ -453,4 +454,33 @@ export async function runAssistantActions(actions: AssistantAction[]): Promise<s
     ws = await fetchWorkspace();
   }
   return log;
+}
+
+/* ---------- voice task bot (Groq, server-side) ---------- */
+export async function sendVoiceCommand(prompt: string, boardId: string): Promise<VoiceResult> {
+  const { data } = await supabase.auth.getSession();
+  const res = await fetch("/api/voice-command", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session?.access_token ?? ""}` },
+    body: JSON.stringify({ prompt, boardId }),
+  });
+  const body = (await res.json().catch(() => ({}))) as VoiceResult & { error?: string };
+  if (!res.ok) throw new Error(body.error ?? `Voice command failed (${res.status})`);
+  return body;
+}
+
+/** Applies one voice action to this board. New cards go to the first list; done/reopen move the card to the matching list. */
+export async function runVoiceAction(boardId: string, a: VoiceAction) {
+  if (a.type === "ADD") return void (await addPlannedTasks(boardId, [{ title: a.taskTitle ?? "New task", owner: a.owner ?? null, deadline: null }]));
+  if (a.type === "CLEAR") {
+    const ids = check(await supabase.from("board_lists").select("id").eq("board_id", boardId)).map((l) => l.id);
+    if (ids.length) check(await supabase.from("tasks").delete().in("list_id", ids));
+    return;
+  }
+  if (!a.taskId) throw new Error("No task selected.");
+  if (a.type === "COMPLETE") return setTaskStatus(a.taskId, "done");
+  if (a.type === "REOPEN") return setTaskStatus(a.taskId, "todo");
+  if (a.type === "DELETE") return deleteTask(a.taskId);
+  if (a.type === "RENAME") return updateTask(a.taskId, { title: a.newTaskTitle ?? a.taskTitle ?? "" });
+  if (a.type === "ASSIGN") return updateTask(a.taskId, { owner: a.owner ?? "" });
 }

@@ -16,6 +16,7 @@ import { Route as AuthenticatedShellRouteImport } from './routes/_authenticated/
 import { Route as ApiAssistantRouteImport } from './routes/api/assistant'
 import { Route as ApiProcessMeetingRouteImport } from './routes/api/process-meeting'
 import { Route as ApiTranscribeRouteImport } from './routes/api/transcribe'
+import { Route as ApiVoiceCommandRouteImport } from './routes/api/voice-command'
 import { Route as AuthenticatedShellAdminRouteImport } from './routes/_authenticated/_shell/admin'
 import { Route as AuthenticatedShellDashboardRouteImport } from './routes/_authenticated/_shell/dashboard'
 import { Route as AuthenticatedShellFollowThroughRouteImport } from './routes/_authenticated/_shell/follow-through'
@@ -56,6 +57,11 @@ const ApiProcessMeetingRoute = ApiProcessMeetingRouteImport.update({
 const ApiTranscribeRoute = ApiTranscribeRouteImport.update({
   id: '/api/transcribe',
   path: '/api/transcribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiVoiceCommandRoute = ApiVoiceCommandRouteImport.update({
+  id: '/api/voice-command',
+  path: '/api/voice-command',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedShellAdminRoute = AuthenticatedShellAdminRouteImport.update({
@@ -111,6 +117,7 @@ export interface FileRoutesByFullPath {
   '/api/assistant': typeof ApiAssistantRoute
   '/api/process-meeting': typeof ApiProcessMeetingRoute
   '/api/transcribe': typeof ApiTranscribeRoute
+  '/api/voice-command': typeof ApiVoiceCommandRoute
   '/admin': typeof AuthenticatedShellAdminRoute
   '/dashboard': typeof AuthenticatedShellDashboardRoute
   '/follow-through': typeof AuthenticatedShellFollowThroughRoute
@@ -126,6 +133,7 @@ export interface FileRoutesByTo {
   '/api/assistant': typeof ApiAssistantRoute
   '/api/process-meeting': typeof ApiProcessMeetingRoute
   '/api/transcribe': typeof ApiTranscribeRoute
+  '/api/voice-command': typeof ApiVoiceCommandRoute
   '/admin': typeof AuthenticatedShellAdminRoute
   '/dashboard': typeof AuthenticatedShellDashboardRoute
   '/follow-through': typeof AuthenticatedShellFollowThroughRoute
@@ -144,6 +152,7 @@ export interface FileRoutesById {
   '/api/assistant': typeof ApiAssistantRoute
   '/api/process-meeting': typeof ApiProcessMeetingRoute
   '/api/transcribe': typeof ApiTranscribeRoute
+  '/api/voice-command': typeof ApiVoiceCommandRoute
   '/_authenticated/_shell/admin': typeof AuthenticatedShellAdminRoute
   '/_authenticated/_shell/dashboard': typeof AuthenticatedShellDashboardRoute
   '/_authenticated/_shell/follow-through': typeof AuthenticatedShellFollowThroughRoute
@@ -161,6 +170,7 @@ export interface FileRouteTypes {
     | '/api/assistant'
     | '/api/process-meeting'
     | '/api/transcribe'
+    | '/api/voice-command'
     | '/admin'
     | '/dashboard'
     | '/follow-through'
@@ -176,6 +186,7 @@ export interface FileRouteTypes {
     | '/api/assistant'
     | '/api/process-meeting'
     | '/api/transcribe'
+    | '/api/voice-command'
     | '/admin'
     | '/dashboard'
     | '/follow-through'
@@ -193,6 +204,7 @@ export interface FileRouteTypes {
     | '/api/assistant'
     | '/api/process-meeting'
     | '/api/transcribe'
+    | '/api/voice-command'
     | '/_authenticated/_shell/admin'
     | '/_authenticated/_shell/dashboard'
     | '/_authenticated/_shell/follow-through'
@@ -210,6 +222,7 @@ export interface RootRouteChildren {
   ApiAssistantRoute: typeof ApiAssistantRoute
   ApiProcessMeetingRoute: typeof ApiProcessMeetingRoute
   ApiTranscribeRoute: typeof ApiTranscribeRoute
+  ApiVoiceCommandRoute: typeof ApiVoiceCommandRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -261,6 +274,13 @@ declare module '@tanstack/react-router' {
       path: '/api/transcribe'
       fullPath: '/api/transcribe'
       preLoaderRoute: typeof ApiTranscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/voice-command': {
+      id: '/api/voice-command'
+      path: '/api/voice-command'
+      fullPath: '/api/voice-command'
+      preLoaderRoute: typeof ApiVoiceCommandRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/_shell/admin': {
@@ -365,6 +385,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAssistantRoute: ApiAssistantRoute,
   ApiProcessMeetingRoute: ApiProcessMeetingRoute,
   ApiTranscribeRoute: ApiTranscribeRoute,
+  ApiVoiceCommandRoute: ApiVoiceCommandRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
