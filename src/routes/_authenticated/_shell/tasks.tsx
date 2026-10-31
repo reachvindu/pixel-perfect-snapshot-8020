@@ -5,7 +5,7 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { statusForListName } from "@/lib/assistant-actions";
-import { ArrowLeft, CalendarDays, KanbanSquare, MoreHorizontal, Pencil, Plus, Sparkles, Trash2, X } from "lucide-react";
+import { ArrowLeft, CalendarDays, KanbanSquare, MoreHorizontal, Pencil, Plus, Sparkles, Trash2, Users, X } from "lucide-react";
 import { useAction, useMe, useWorkspace } from "@/store/app-store";
 import {
   createBoard, createList, createTask, deleteBoard, deleteList, deleteTask, renameBoard, renameList, updateBoardDescription, updateTask, updateTaskDescription,
@@ -115,7 +115,7 @@ function BoardsPage() {
   const openNew = (list: BoardList) =>
     setEditing({
       draft: {
-        listId: list.id, title: "", owner: "", deadline: null, status: "todo", position: cardsIn(list.id).length,
+        listId: list.id, title: "", owner: "", team: "", deadline: null, status: "todo", position: cardsIn(list.id).length,
         sourceMeetingId: meetings[0]?.id ?? null, lastMentionedMeetingId: null,
       },
       notes: "", savedNotes: "",
@@ -123,7 +123,7 @@ function BoardsPage() {
 
   async function saveTask() {
     if (!editing) return;
-    const d = { ...editing.draft, title: editing.draft.title.trim(), owner: editing.draft.owner.trim() };
+    const d = { ...editing.draft, title: editing.draft.title.trim(), owner: editing.draft.owner.trim(), team: editing.draft.team.trim() };
     if (editing.id) {
       await editTask.run(editing.id, d);
       if (editing.notes !== editing.savedNotes) await notesTask.run(editing.id, editing.notes);
@@ -145,7 +145,7 @@ function BoardsPage() {
         actions={
           <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             {board && <Button variant="ghost" onClick={() => setBoardId(null)}><ArrowLeft /> All boards</Button>}
-            {me.canEdit && <GoalPlanner key={board?.id ?? "all"} boards={boards} defaultBoardId={board?.id ?? null} />}
+            {me.canEdit && <GoalPlanner key={`goal:${board?.id ?? "all"}`} boards={boards} defaultBoardId={board?.id ?? null} />}
             {me.canEdit && board && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild><Button variant="outline" size="icon" aria-label="Board options"><MoreHorizontal /></Button></DropdownMenuTrigger>
@@ -162,7 +162,7 @@ function BoardsPage() {
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
-            <AddTranscriptButton key={board?.id ?? "all"} series={board ? board.seriesName || board.name : undefined} />
+            <AddTranscriptButton key={`transcript:${board?.id ?? "all"}`} series={board ? board.seriesName || board.name : undefined} />
             {board && <VoiceTaskBot boardId={board.id} taskCount={tasks.filter((t) => boardLists.some((l) => l.id === t.listId)).length} />}
             {me.canEdit && <Button variant="outline" onClick={() => setNewBoard({ name: "", description: "" })}><Plus /> New board</Button>}
           </div>
@@ -247,6 +247,7 @@ function BoardsPage() {
       <TaskDialog
         editing={editing}
         lists={boardLists}
+        teams={[...new Set(tasks.map((t) => t.team.trim()).filter(Boolean))].sort()}
         meetings={meetings}
         canEdit={me.canEdit}
         onChange={(draft) => setEditing((e) => (e ? { ...e, draft } : e))}
@@ -306,7 +307,7 @@ function TaskCard({ task, dragging, onOpen, aiChange }: { task: Task; dragging: 
   return (
     <div
       onClick={onOpen}
-      className={cn("cursor-pointer select-none rounded-lg border bg-card p-3 shadow-card transition hover:border-primary/40", aiChange && "border-violet/60 ring-1 ring-violet/40", dragging && "opacity-40")}
+      className={cn("cursor-pointer select-none rounded-lg border bg-card p-3 shadow-card transition hover:border-primary/40", task.droppedAt && "opacity-60", aiChange && "border-violet/60 ring-1 ring-violet/40", dragging && "opacity-40")}
     >
       {aiChange && <span className="mb-1.5 inline-block rounded-full bg-violet px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">{aiChange === "new" ? "New" : "Updated"}</span>}
       <p className="text-sm font-medium leading-snug">{task.title}</p>
@@ -314,17 +315,29 @@ function TaskCard({ task, dragging, onOpen, aiChange }: { task: Task; dragging: 
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         <StatusPill status={task.status} />
         {task.aiAdded && <Badge className="bg-violet-soft text-violet"><Sparkles className="size-3" /> AI</Badge>}
-        {!task.owner.trim() && task.status !== "done" && <Badge className="bg-muted text-muted-foreground">Needs owner</Badge>}
-        {!task.deadline && task.status !== "done" && <Badge className="bg-muted text-muted-foreground">Needs date</Badge>}
+        {task.droppedAt && <Badge className="bg-muted text-muted-foreground">Dropped</Badge>}
+        {!task.owner.trim() && !task.team.trim() && task.status !== "done" && !task.droppedAt && <Badge className="bg-muted text-muted-foreground">Needs owner</Badge>}
+        {!task.deadline && task.status !== "done" && !task.droppedAt && <Badge className="bg-muted text-muted-foreground">Needs date</Badge>}
         {deadlineState(task) === "overdue" && <Badge className="bg-destructive/10 text-destructive">Overdue</Badge>}
         {deadlineState(task) === "soon" && <Badge className="bg-warning-soft text-warning">Due soon</Badge>}
         {task.isSample && <SampleBadge />}
       </div>
       <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
-        {task.owner ? <span className="flex min-w-0 items-center gap-1.5"><Avatar name={task.owner} /><span className="truncate">{task.owner}</span></span> : <span />}
+        <Assignee owner={task.owner} team={task.team} />
         {task.deadline && <span className="flex shrink-0 items-center gap-1"><CalendarDays className="size-3.5" />{formatDate(task.deadline)}</span>}
       </div>
     </div>
+  );
+}
+
+/** "Priya · Design", just the person, or just the team. */
+function Assignee({ owner, team }: { owner: string; team: string }) {
+  if (!owner && !team) return <span />;
+  return (
+    <span className="flex min-w-0 items-center gap-1.5">
+      {owner ? <Avatar name={owner} /> : <Users className="size-3.5 shrink-0" />}
+      <span className="truncate">{owner}{owner && team && <span className="text-muted-foreground/80"> · </span>}{team && <span className="font-medium">{team}</span>}</span>
+    </span>
   );
 }
 
@@ -351,9 +364,10 @@ function AddList({ onAdd }: { onAdd: (name: string) => void }) {
   );
 }
 
-function TaskDialog({ editing, lists, meetings, canEdit, onChange, onNotes, onClose, onSave, onSaveNotes, onDelete }: {
+function TaskDialog({ editing, lists, teams, meetings, canEdit, onChange, onNotes, onClose, onSave, onSaveNotes, onDelete }: {
   editing: { id?: string; draft: TaskInput; notes: string; savedNotes: string } | null;
   lists: BoardList[];
+  teams: string[];
   meetings: { id: string; title: string; date: string }[];
   canEdit: boolean;
   onChange: (d: TaskInput) => void;
@@ -373,7 +387,15 @@ function TaskDialog({ editing, lists, meetings, canEdit, onChange, onNotes, onCl
           <fieldset disabled={!canEdit} className="space-y-4">
             <div className="space-y-1.5"><Label htmlFor="t-title">Title</Label><Input id="t-title" value={d.title} onChange={(e) => onChange({ ...d, title: e.target.value })} /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5"><Label htmlFor="t-owner">Owner</Label><Input id="t-owner" value={d.owner} onChange={(e) => onChange({ ...d, owner: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label htmlFor="t-owner">Person</Label><Input id="t-owner" value={d.owner} placeholder="e.g. Priya" onChange={(e) => onChange({ ...d, owner: e.target.value })} /></div>
+              <div className="space-y-1.5">
+                <Label htmlFor="t-team">Team</Label>
+                <Input id="t-team" list="t-teams" value={d.team} placeholder="e.g. Design" onChange={(e) => onChange({ ...d, team: e.target.value })} />
+                <datalist id="t-teams">{teams.map((t) => <option key={t} value={t} />)}</datalist>
+              </div>
+            </div>
+            <p className="-mt-2 text-xs text-muted-foreground">Assign to a person, a team, or both.</p>
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5"><Label htmlFor="t-deadline">Deadline</Label><Input id="t-deadline" type="date" value={d.deadline ?? ""} onChange={(e) => onChange({ ...d, deadline: e.target.value || null })} /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">

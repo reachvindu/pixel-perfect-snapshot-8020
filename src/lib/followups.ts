@@ -12,14 +12,14 @@ export function agendaText(items: Forgotten[]) {
   return [...groups]
     .map(([name, fs]) => [
       `Follow-ups for the next “${name}” meeting:`,
-      ...fs.map((f, i) => `${i + 1}. ${f.task.title} — ${f.task.owner || "owner?"} (last discussed ${formatDate(f.lastMeeting.date)})`),
+      ...fs.map((f, i) => `${i + 1}. ${f.task.title} — ${[f.task.owner, f.task.team].filter(Boolean).join(" · ") || "owner?"} (last discussed ${formatDate(f.lastMeeting.date)})`),
     ].join("\n"))
     .join("\n\n");
 }
 
 /** A polite check-in message for the task owner. */
 export function nudgeText({ task, lastMeeting }: Forgotten) {
-  const name = task.owner.trim().split(/\s+/)[0] || "there";
+  const name = task.owner.trim().split(/\s+/)[0] || (task.team.trim() ? `${task.team.trim()} team` : "there");
   return `Hi ${name}, quick check on “${task.title}” from the ${series(lastMeeting)} meeting on ${formatDate(lastMeeting.date)}. Any update? If it's stuck or no longer needed, just let me know.`;
 }
 

@@ -7,7 +7,7 @@ const m = (id: string, date: string, seriesName = "Sync"): Meeting => ({
 });
 const t = (id: string, last: string, status: Task["status"] = "todo"): Task => ({
   id, listId: "l", position: 0, title: id, owner: "A", deadline: "2026-01-01", status,
-  sourceMeetingId: last, lastMentionedMeetingId: last, description: "", aiAdded: false, isSample: false,
+  sourceMeetingId: last, lastMentionedMeetingId: last, description: "", aiAdded: false, isSample: false, team: "", droppedAt: null,
 });
 
 describe("getForgottenCommitments", () => {
@@ -20,6 +20,9 @@ describe("getForgottenCommitments", () => {
   });
   it("ignores done tasks", () => {
     expect(getForgottenCommitments([t("a", "m1", "done")], meetings)).toHaveLength(0);
+  });
+  it("ignores dropped tasks", () => {
+    expect(getForgottenCommitments([{ ...t("a", "m1"), droppedAt: "2026-10-31T10:00:00Z" }], meetings)).toHaveLength(0);
   });
   it("only counts later meetings in the same series", () => {
     const mixed = [m("m1", "2026-10-01", "Sync"), m("x", "2026-10-08", "Pitch Prep")];

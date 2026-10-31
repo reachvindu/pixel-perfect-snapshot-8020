@@ -66,7 +66,7 @@ function MeetingsPage() {
           const name = ms[0]!.seriesName;
           const board = boards.find((b) => sameName(b.seriesName, name)) ?? boards.find((b) => sameName(b.name, name));
           const listIds = new Set(lists.filter((l) => l.boardId === board?.id).map((l) => l.id));
-          const open = tasks.filter((t) => listIds.has(t.listId) && t.status !== "done").length;
+          const open = tasks.filter((t) => listIds.has(t.listId) && t.status !== "done" && !t.droppedAt).length;
           const lost = forgotten.filter((f) => listIds.has(f.task.listId)).length;
           return (
             <Collapsible key={`${name}:${q ? "q" : ""}`} defaultOpen={i === 0 || !!q} className="group/series rounded-xl border bg-card shadow-card">

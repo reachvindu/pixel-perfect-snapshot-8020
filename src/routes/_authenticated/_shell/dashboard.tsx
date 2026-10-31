@@ -21,7 +21,7 @@ function Dashboard() {
   const forgotten = getForgottenCommitments(tasks, meetings);
   const forgottenIds = new Set(forgotten.map((f) => f.task.id));
   const boardOfList = new Map(lists.map((l) => [l.id, l.boardId]));
-  const open = tasks.filter((t) => t.status !== "done").length;
+  const open = tasks.filter((t) => t.status !== "done" && !t.droppedAt).length;
   const done = tasks.length - open;
   const unseen = boards.filter((b) => hasUnseenUpdate(b, meetings));
   const overdue = tasks.filter((t) => deadlineState(t) === "overdue").sort((a, b) => a.deadline!.localeCompare(b.deadline!));

@@ -4,12 +4,12 @@ const seriesOf = (m: Meeting) => (m.seriesName || m.title).trim().toLowerCase();
 
 /**
  * A commitment is "forgotten" when the task is not done and at least one later
- * meeting in the same series happened without discussing it.
+ * meeting in the same series happened without discussing it. Dropped tasks are never forgotten.
  */
 export function getForgottenCommitments(tasks: Task[], meetings: Meeting[]) {
   const byId = new Map(meetings.map((m) => [m.id, m]));
   return tasks
-    .filter((t) => t.status !== "done")
+    .filter((t) => t.status !== "done" && !t.droppedAt)
     .map((t) => {
       const last = t.lastMentionedMeetingId ? byId.get(t.lastMentionedMeetingId) : undefined;
       if (!last) return null;

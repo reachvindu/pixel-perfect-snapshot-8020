@@ -26,6 +26,14 @@ describe("parseVoiceReply", () => {
     expect(r.skipped).toEqual([]);
   });
 
+  it("assigns to a team, with or without a person", () => {
+    const r = parseVoiceReply({ commands: [{ action: "assign", taskNumber: 1, team: "Design" }, { action: "assign", taskNumber: 2, assignee: "Manu", department: "Sales" }] }, tasks);
+    expect(r.actions).toEqual([
+      { type: "ASSIGN", taskId: "t1", taskTitle: "Draft pitch deck outline", team: "Design" },
+      { type: "ASSIGN", taskId: "t2", taskTitle: "Book demo room", owner: "Manu", team: "Sales" },
+    ]);
+  });
+
   it("never guesses a task that isn't on the board", () => {
     const r = parseVoiceReply({ commands: [{ action: "delete", taskName: "Invoices" }, { action: "delete", taskNumber: 9 }] }, tasks);
     expect(r.actions).toEqual([]);

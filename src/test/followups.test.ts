@@ -7,7 +7,7 @@ const m = (id: string, date: string, seriesName: string): Meeting => ({
 });
 const t = (title: string, owner: string): Task => ({
   id: title, listId: "l", position: 0, title, owner, deadline: null, status: "todo",
-  sourceMeetingId: null, lastMentionedMeetingId: null, description: "", aiAdded: false, isSample: false,
+  sourceMeetingId: null, lastMentionedMeetingId: null, description: "", aiAdded: false, isSample: false, team: "", droppedAt: null,
 });
 
 describe("follow-up helpers", () => {

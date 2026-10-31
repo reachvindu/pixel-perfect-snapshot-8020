@@ -9,6 +9,7 @@ export interface VoiceAction {
   taskTitle?: string;
   newTaskTitle?: string;
   owner?: string;
+  team?: string;
 }
 
 export type VoiceResult = { actions: VoiceAction[]; confirmation: string; skipped: string[] };
@@ -23,7 +24,7 @@ A single sentence may contain SEVERAL commands ("add X and Y, mark 2 done, delet
 Each command has keys:
 - action: one of
   "add" (new task; if no title spoken invent a short sensible one),
-  "assign" (give/reassign an EXISTING task to a person),
+  "assign" (give/reassign an EXISTING task to a person and/or a team),
   "complete" (done/finished/tick off),
   "uncomplete" (reopen/undo/mark not done),
   "rename" (change an existing task's title),
@@ -34,7 +35,8 @@ Each command has keys:
 - taskNumber: 1-based number of the referenced existing task (resolve "last", "first", "second one" using the list), else null
 - newName: new title for rename, else null
 - assignee: person's name (for add or assign), else null
-Never put the assignee's name inside taskName.
+- team: team or department name, capitalized (e.g. "Design"), for assign, else null
+Never put the assignee's or team's name inside taskName.
 "confirmation": one short friendly sentence summarising everything done. If something is unclear or the referenced task doesn't exist, say so briefly and suggest what to say instead (e.g. "I couldn't find a task about invoices. Try saying its number.").`;
 
 export function voiceUserMessage(transcript: string, tasks: VoiceTask[]) {
@@ -63,6 +65,7 @@ export function parseVoiceReply(reply: unknown, tasks: VoiceTask[]): VoiceResult
     const type = TYPES[String(c.action)];
     const name = str(c.taskName);
     const owner = str(c.assignee);
+    const team = str(c.team) ?? str(c.department);
     if (!type) { skipped.push("I didn't understand part of that."); continue; }
     if (type === "CLEAR") { actions.push({ type }); continue; }
     if (type === "ADD") {
@@ -80,7 +83,7 @@ export function parseVoiceReply(reply: unknown, tasks: VoiceTask[]): VoiceResult
       if (to) actions.push({ ...base, newTaskTitle: to.slice(0, 200) });
       else skipped.push(`What should “${task.title}” be renamed to?`);
     } else if (type === "ASSIGN") {
-      if (owner) actions.push({ ...base, owner });
+      if (owner || team) actions.push({ ...base, ...(owner ? { owner } : {}), ...(team ? { team } : {}) });
       else skipped.push(`Who should “${task.title}” go to?`);
     } else {
       actions.push(base);
@@ -96,7 +99,7 @@ export function describeVoiceAction(a: VoiceAction, boardTaskCount = 0) {
     case "COMPLETE": return `Mark “${a.taskTitle}” done`;
     case "REOPEN": return `Reopen “${a.taskTitle}”`;
     case "RENAME": return `Rename “${a.taskTitle}” to “${a.newTaskTitle}”`;
-    case "ASSIGN": return `Assign “${a.taskTitle}” to ${a.owner}`;
+    case "ASSIGN": return `Assign “${a.taskTitle}” to ${[a.owner, a.team].filter(Boolean).join(" · ")}`;
     case "DELETE": return `Delete “${a.taskTitle}”`;
     case "CLEAR": return `Delete all ${boardTaskCount} cards on this board`;
   }

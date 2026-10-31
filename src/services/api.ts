@@ -58,6 +58,7 @@ export async function fetchWorkspace() {
     id: r.id, listId: r.list_id, title: r.title, owner: r.owner, deadline: r.deadline, status: r.status,
     position: r.position, sourceMeetingId: r.source_meeting_id, lastMentionedMeetingId: r.last_mentioned_meeting_id,
     description: r.description, aiAdded: r.ai_added, isSample: r.is_sample,
+    team: r.team ?? "", droppedAt: r.dropped_at ?? null,
   }));
   const proposals: AIProposal[] = check(p).map((r) => ({
     id: r.id, taskId: r.task_id, meetingId: r.meeting_id, currentStatus: r.current_status, proposedStatus: r.proposed_status,
@@ -139,11 +140,12 @@ export async function deleteList(id: string) {
 }
 
 /* tasks */
-export type TaskInput = Omit<Task, "id" | "isSample" | "description" | "aiAdded">;
+export type TaskInput = Omit<Task, "id" | "isSample" | "description" | "aiAdded" | "droppedAt">;
 export async function createTask(t: TaskInput & { description?: string }) {
   check(await supabase.from("tasks").insert({
     description: t.description?.trim() ?? "", list_id: t.listId, title: t.title, owner: t.owner, deadline: t.deadline, status: t.status, position: t.position,
     source_meeting_id: t.sourceMeetingId, last_mentioned_meeting_id: t.lastMentionedMeetingId ?? t.sourceMeetingId,
+    ...(t.team ? { team: t.team } : {}),
   }));
 }
 export async function updateTask(id: string, t: Partial<TaskInput>) {
@@ -151,6 +153,7 @@ export async function updateTask(id: string, t: Partial<TaskInput>) {
   if (t.listId !== undefined) row.list_id = t.listId;
   if (t.title !== undefined) row.title = t.title;
   if (t.owner !== undefined) row.owner = t.owner;
+  if (t.team !== undefined) row.team = t.team;
   if (t.deadline !== undefined) row.deadline = t.deadline;
   if (t.status !== undefined) row.status = t.status;
   if (t.position !== undefined) row.position = t.position;
@@ -160,6 +163,10 @@ export async function updateTask(id: string, t: Partial<TaskInput>) {
 }
 export async function deleteTask(id: string) {
   check(await supabase.from("tasks").delete().eq("id", id));
+}
+/** A commitment that's no longer a priority: kept for the record, hidden from Forgotten and deadline alerts. */
+export async function setTaskDropped(id: string, dropped: boolean) {
+  check(await supabase.from("tasks").update({ dropped_at: dropped ? new Date().toISOString() : null }).eq("id", id));
 }
 /** Card notes — any approved member may edit these (checked in the database). */
 export async function updateTaskDescription(id: string, description: string) {
@@ -382,7 +389,7 @@ export async function runAssistantActions(actions: AssistantAction[]): Promise<s
           await createTask({
             listId: l.id, title: a.title.trim(), owner: a.owner?.trim() ?? "", deadline: a.deadline && a.deadline !== "none" ? a.deadline : null,
             status: a.status ?? statusForListName(l.name) ?? "todo", position: ws.tasks.filter((x) => x.listId === l.id).length,
-            sourceMeetingId: null, lastMentionedMeetingId: null,
+            sourceMeetingId: null, lastMentionedMeetingId: null, team: "",
           });
           log.push(`✓ Added “${a.title.trim()}” to ${l.name}`);
           break;
@@ -482,5 +489,5 @@ export async function runVoiceAction(boardId: string, a: VoiceAction) {
   if (a.type === "REOPEN") return setTaskStatus(a.taskId, "todo");
   if (a.type === "DELETE") return deleteTask(a.taskId);
   if (a.type === "RENAME") return updateTask(a.taskId, { title: a.newTaskTitle ?? a.taskTitle ?? "" });
-  if (a.type === "ASSIGN") return updateTask(a.taskId, { owner: a.owner ?? "" });
+  if (a.type === "ASSIGN") return updateTask(a.taskId, { ...(a.owner ? { owner: a.owner } : {}), ...(a.team ? { team: a.team } : {}) });
 }

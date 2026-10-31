@@ -36,6 +36,7 @@ export interface Task {
   listId: string;
   title: string;
   owner: string;
+  team: string;
   deadline: string | null;
   status: TaskStatus;
   position: number;
@@ -43,6 +44,7 @@ export interface Task {
   lastMentionedMeetingId: string | null;
   description: string;
   aiAdded: boolean;
+  droppedAt: string | null;
   isSample: boolean;
 }
 

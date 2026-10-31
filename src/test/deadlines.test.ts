@@ -4,7 +4,7 @@ import type { Task } from "@/types";
 
 const t = (id: string, deadline: string | null, status: Task["status"] = "todo"): Task => ({
   id, listId: "l", position: 0, title: id, owner: "", deadline, status,
-  sourceMeetingId: null, lastMentionedMeetingId: null, description: "", aiAdded: false, isSample: false,
+  sourceMeetingId: null, lastMentionedMeetingId: null, description: "", aiAdded: false, isSample: false, team: "", droppedAt: null,
 });
 
 describe("deadlines", () => {
@@ -13,6 +13,7 @@ describe("deadlines", () => {
     expect(deadlineState(t("a", "2026-11-02"), "2026-10-31")).toBe("soon");
     expect(deadlineState(t("a", "2026-11-05"), "2026-10-31")).toBeNull();
     expect(deadlineState(t("a", "2026-10-30", "done"), "2026-10-31")).toBeNull();
+    expect(deadlineState({ ...t("a", "2026-10-30"), droppedAt: "2026-10-31T10:00:00Z" }, "2026-10-31")).toBeNull();
   });
   it("lists open tasks due in the next week", () => {
     const tasks = [t("late", "2026-10-30"), t("b", "2026-11-06"), t("a", "2026-11-01"), t("far", "2026-11-20")];
