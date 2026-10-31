@@ -11,6 +11,8 @@ export interface Meeting {
   link: string;
   platform: MeetingPlatform;
   transcript: string;
+  seriesName: string;
+  processedAt: string | null;
   isSample: boolean;
 }
 
@@ -18,6 +20,7 @@ export interface Board {
   id: string;
   name: string;
   description: string;
+  seriesName: string;
   isSample: boolean;
 }
 
@@ -38,6 +41,8 @@ export interface Task {
   position: number;
   sourceMeetingId: string | null;
   lastMentionedMeetingId: string | null;
+  description: string;
+  aiAdded: boolean;
   isSample: boolean;
 }
 

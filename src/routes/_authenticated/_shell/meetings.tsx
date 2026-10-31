@@ -1,10 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { ExternalLink, Mic, Trash2 } from "lucide-react";
-import { useAction, useMe, useWorkspace } from "@/store/app-store";
+import { ExternalLink, Mic, Sparkles, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { useAction, useMe, useProcessMeeting, useWorkspace } from "@/store/app-store";
 import { createMeeting, deleteMeeting, updateMeetingTranscript } from "@/services/api";
 import { PageHeader, PlatformPill, SampleBadge, EmptyState } from "@/components/shared";
 import { LiveTranscriber } from "@/components/live-transcriber";
+import { AddTranscriptButton } from "@/components/add-transcript";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +22,7 @@ export const Route = createFileRoute("/_authenticated/_shell/meetings")({
   component: MeetingsPage,
 });
 
-const empty = { title: "", date: "", link: "", platform: "zoom" as MeetingPlatform, transcript: "" };
+const empty = { title: "", date: "", link: "", platform: "zoom" as MeetingPlatform, transcript: "", seriesName: "" };
 const append = (prev: string, text: string) => (prev ? `${prev.trimEnd()}\n${text}` : text);
 
 function MeetingsPage() {
@@ -30,12 +32,13 @@ function MeetingsPage() {
   const del = useAction(deleteMeeting);
   const [form, setForm] = useState(empty);
   const [live, setLive] = useState<Meeting | null>(null);
+  const processing = useProcessMeeting();
   const validLink = /^https?:\/\/\S+$/.test(form.link);
-  const canSubmit = form.title.trim() && form.date && validLink;
+  const canSubmit = form.title.trim() && form.date && (validLink || !form.link.trim());
 
   return (
     <div className="mx-auto max-w-7xl">
-      <PageHeader title="Meetings" description="Log a meeting, join it, and capture the transcript live." />
+      <PageHeader title="Meetings" description="Log a meeting, join it, and capture the transcript live." actions={<AddTranscriptButton />} />
       <div className="grid gap-6 lg:grid-cols-5">
         {me.canEdit ? (
           <form
@@ -43,8 +46,9 @@ function MeetingsPage() {
             onSubmit={async (e) => {
               e.preventDefault();
               if (!canSubmit) return;
-              await add.run({ ...form, title: form.title.trim() });
+              const id = (await add.run({ ...form, title: form.title.trim() })) as string;
               setForm(empty);
+              if (form.transcript.trim()) void processing.run(id);
             }}
           >
             <h2 className="text-sm font-semibold">New meeting</h2>
@@ -66,7 +70,12 @@ function MeetingsPage() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="link">Meeting link</Label>
+              <Label htmlFor="series">Meeting series <span className="font-normal text-muted-foreground">(optional)</span></Label>
+              <Input id="series" list="series-options" value={form.seriesName} onChange={(e) => setForm({ ...form, seriesName: e.target.value })} placeholder={form.title || "Same as title"} />
+              <datalist id="series-options">{[...new Set(meetings.map((m) => m.seriesName))].map((s) => <option key={s} value={s} />)}</datalist>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="link">Meeting link <span className="font-normal text-muted-foreground">(optional)</span></Label>
               <Input id="link" value={form.link} onChange={(e) => setForm({ ...form, link: e.target.value })} placeholder="https://…" />
               {form.link && !validLink && <p className="text-xs text-destructive">Enter a full link starting with https://</p>}
             </div>
@@ -98,11 +107,21 @@ function MeetingsPage() {
               <div className="flex flex-wrap items-center gap-2 p-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2"><span className="truncate font-medium">{m.title}</span>{m.isSample && <SampleBadge />}</div>
-                  <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">{formatDate(m.date)} <PlatformPill platform={m.platform} /></div>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    {formatDate(m.date)} <PlatformPill platform={m.platform} />
+                    {m.seriesName && m.seriesName !== m.title && <span>Series: {m.seriesName}</span>}
+                    {m.processedAt && <span className="text-success">✓ Read by AI</span>}
+                  </div>
                 </div>
                 <CollapsibleTrigger asChild><Button variant="ghost" size="sm" disabled={!m.transcript}>Transcript</Button></CollapsibleTrigger>
+                {me.canEdit && m.transcript.trim() && (
+                  <Button variant={m.processedAt ? "ghost" : "default"} size="sm" disabled={processing.busyId !== null}
+                    onClick={() => { if (!m.processedAt || confirm("Read this transcript with AI again? New tasks it finds will be added.")) void processing.run(m.id); }}>
+                    <Sparkles /> {processing.busyId === m.id ? "Reading…" : m.processedAt ? "Re-process" : "Process with AI"}
+                  </Button>
+                )}
                 {me.canEdit && <Button variant="outline" size="sm" onClick={() => setLive(m)}><Mic /> Record</Button>}
-                <Button size="sm" asChild><a href={m.link} target="_blank" rel="noreferrer"><ExternalLink /> Join</a></Button>
+                {m.link && <Button size="sm" variant="outline" asChild><a href={m.link} target="_blank" rel="noreferrer"><ExternalLink /> Join</a></Button>}
                 {me.canEdit && (
                   <Button variant="ghost" size="icon" aria-label="Delete meeting" onClick={() => del.run(m.id)}><Trash2 /></Button>
                 )}
@@ -122,18 +141,23 @@ function MeetingsPage() {
 function LiveDialog({ meeting, onClose }: { meeting: Meeting; onClose: () => void }) {
   const [text, setText] = useState(meeting.transcript);
   const save = useAction(updateMeetingTranscript);
+  const processing = useProcessMeeting();
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader><DialogTitle>Live transcript · {meeting.title}</DialogTitle></DialogHeader>
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" asChild><a href={meeting.link} target="_blank" rel="noreferrer"><ExternalLink /> Open meeting</a></Button>
+          {meeting.link && <Button size="sm" variant="outline" asChild><a href={meeting.link} target="_blank" rel="noreferrer"><ExternalLink /> Open meeting</a></Button>}
         </div>
         <LiveTranscriber onText={(t) => setText((p) => append(p, t))} />
         <Textarea rows={12} value={text} onChange={(e) => setText(e.target.value)} />
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Close</Button>
-          <Button disabled={save.pending || text === meeting.transcript} onClick={async () => { await save.run(meeting.id, text); onClose(); }}>Save transcript</Button>
+          <Button disabled={save.pending || text === meeting.transcript} onClick={async () => {
+            await save.run(meeting.id, text);
+            onClose();
+            if (text.trim()) toast("Transcript saved", { action: { label: "Process with AI", onClick: () => void processing.run(meeting.id) } });
+          }}>Save transcript</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

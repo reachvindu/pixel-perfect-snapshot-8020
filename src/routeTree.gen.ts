@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedShellRouteImport } from './routes/_authenticated/_shell'
 import { Route as ApiAssistantRouteImport } from './routes/api/assistant'
+import { Route as ApiProcessMeetingRouteImport } from './routes/api/process-meeting'
 import { Route as ApiTranscribeRouteImport } from './routes/api/transcribe'
 import { Route as AuthenticatedShellAdminRouteImport } from './routes/_authenticated/_shell/admin'
 import { Route as AuthenticatedShellDashboardRouteImport } from './routes/_authenticated/_shell/dashboard'
@@ -45,6 +46,11 @@ const AuthenticatedShellRoute = AuthenticatedShellRouteImport.update({
 const ApiAssistantRoute = ApiAssistantRouteImport.update({
   id: '/api/assistant',
   path: '/api/assistant',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiProcessMeetingRoute = ApiProcessMeetingRouteImport.update({
+  id: '/api/process-meeting',
+  path: '/api/process-meeting',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiTranscribeRoute = ApiTranscribeRouteImport.update({
@@ -103,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/api/assistant': typeof ApiAssistantRoute
+  '/api/process-meeting': typeof ApiProcessMeetingRoute
   '/api/transcribe': typeof ApiTranscribeRoute
   '/admin': typeof AuthenticatedShellAdminRoute
   '/dashboard': typeof AuthenticatedShellDashboardRoute
@@ -117,6 +124,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/api/assistant': typeof ApiAssistantRoute
+  '/api/process-meeting': typeof ApiProcessMeetingRoute
   '/api/transcribe': typeof ApiTranscribeRoute
   '/admin': typeof AuthenticatedShellAdminRoute
   '/dashboard': typeof AuthenticatedShellDashboardRoute
@@ -134,6 +142,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/_shell': typeof AuthenticatedShellRouteWithChildren
   '/api/assistant': typeof ApiAssistantRoute
+  '/api/process-meeting': typeof ApiProcessMeetingRoute
   '/api/transcribe': typeof ApiTranscribeRoute
   '/_authenticated/_shell/admin': typeof AuthenticatedShellAdminRoute
   '/_authenticated/_shell/dashboard': typeof AuthenticatedShellDashboardRoute
@@ -150,6 +159,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/api/assistant'
+    | '/api/process-meeting'
     | '/api/transcribe'
     | '/admin'
     | '/dashboard'
@@ -164,6 +174,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/api/assistant'
+    | '/api/process-meeting'
     | '/api/transcribe'
     | '/admin'
     | '/dashboard'
@@ -180,6 +191,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/_shell'
     | '/api/assistant'
+    | '/api/process-meeting'
     | '/api/transcribe'
     | '/_authenticated/_shell/admin'
     | '/_authenticated/_shell/dashboard'
@@ -196,6 +208,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ApiAssistantRoute: typeof ApiAssistantRoute
+  ApiProcessMeetingRoute: typeof ApiProcessMeetingRoute
   ApiTranscribeRoute: typeof ApiTranscribeRoute
 }
 
@@ -234,6 +247,13 @@ declare module '@tanstack/react-router' {
       path: '/api/assistant'
       fullPath: '/api/assistant'
       preLoaderRoute: typeof ApiAssistantRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/process-meeting': {
+      id: '/api/process-meeting'
+      path: '/api/process-meeting'
+      fullPath: '/api/process-meeting'
+      preLoaderRoute: typeof ApiProcessMeetingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/transcribe': {
@@ -343,6 +363,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ApiAssistantRoute: ApiAssistantRoute,
+  ApiProcessMeetingRoute: ApiProcessMeetingRoute,
   ApiTranscribeRoute: ApiTranscribeRoute,
 }
 export const routeTree = rootRouteImport

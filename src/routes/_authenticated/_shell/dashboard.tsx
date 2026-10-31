@@ -1,9 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlarmClock, CheckCircle2, ListTodo, Video } from "lucide-react";
+import { AlarmClock, CalendarClock, CheckCircle2, ListTodo, Video } from "lucide-react";
 import { useWorkspace } from "@/store/app-store";
 import { PageHeader, PlatformPill, SampleBadge, StatCard } from "@/components/shared";
 import { getForgottenCommitments } from "@/lib/commitments";
 import { formatDate } from "@/lib/constants";
+import { deadlineState, dueThisWeek } from "@/lib/deadlines";
+import { AddTranscriptButton } from "@/components/add-transcript";
 
 export const Route = createFileRoute("/_authenticated/_shell/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — Planova" }, { name: "description", content: "Team overview of meetings and tasks." }] }),
@@ -17,15 +19,18 @@ function Dashboard() {
   const done = tasks.length - open;
   const recent = meetings.slice(0, 5);
   const pending = proposals.filter((p) => p.decision === "pending").length;
+  const overdue = tasks.filter((t) => deadlineState(t) === "overdue").length;
+  const dueSoon = dueThisWeek(tasks).slice(0, 6);
 
   return (
     <div className="mx-auto max-w-7xl">
-      <PageHeader title="Dashboard" description="What your team committed to, and whether it's getting done." />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <PageHeader title="Dashboard" description="What your team committed to, and whether it's getting done." actions={<AddTranscriptButton />} />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard label="Total meetings" value={meetings.length} icon={Video} />
         <StatCard label="Open tasks" value={open} icon={ListTodo} tone="violet" />
         <StatCard label="Completed tasks" value={done} icon={CheckCircle2} tone="success" />
         <StatCard label="Forgotten commitments" value={forgotten.length} icon={AlarmClock} tone="warning" />
+        <StatCard label="Overdue tasks" value={overdue} icon={CalendarClock} tone="warning" />
       </div>
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <section className="rounded-xl border bg-card shadow-card lg:col-span-2">
@@ -61,6 +66,16 @@ function Dashboard() {
               <div className="text-sm text-muted-foreground">Commitments not mentioned since</div>
             </Link>
           </div>
+          <h3 className="mt-6 text-sm font-semibold">Due this week</h3>
+          <ul className="mt-2 space-y-2">
+            {dueSoon.map((t) => (
+              <li key={t.id} className="flex items-center justify-between gap-2 text-sm">
+                <span className="truncate">{t.title}</span>
+                <span className={`shrink-0 text-xs ${deadlineState(t) === "soon" ? "font-medium text-warning" : "text-muted-foreground"}`}>{formatDate(t.deadline!)}</span>
+              </li>
+            ))}
+            {dueSoon.length === 0 && <li className="text-sm text-muted-foreground">Nothing due in the next 7 days.</li>}
+          </ul>
         </section>
       </div>
     </div>

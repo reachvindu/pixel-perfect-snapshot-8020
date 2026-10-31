@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ArrowRight, Check, Quote, X } from "lucide-react";
+import { ArrowRight, Check, CheckCheck, Quote, X } from "lucide-react";
 import { useAction, useMe, useWorkspace } from "@/store/app-store";
-import { decideProposal } from "@/services/api";
+import { approveAllProposals, decideProposal } from "@/services/api";
 import { EmptyState, PageHeader, SampleBadge, StatusPill } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/constants";
@@ -16,6 +16,7 @@ function FollowThrough() {
   const { proposals, tasks, meetings } = useWorkspace();
   const me = useMe();
   const decide = useAction(decideProposal);
+  const approveAll = useAction(approveAllProposals);
   const pending = proposals.filter((p) => p.decision === "pending");
   const decided = proposals.filter((p) => p.decision !== "pending");
 
@@ -56,7 +57,12 @@ function FollowThrough() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <PageHeader title="Follow-Through" description="Proposed status updates based on later meetings. Approving updates the task." />
+      <PageHeader title="Follow-Through" description="Proposed status updates based on later meetings. Approving updates the task and moves its card."
+        actions={me.canEdit && pending.length > 1 ? (
+          <Button disabled={approveAll.pending || decide.pending} onClick={() => { if (confirm(`Approve all ${pending.length} updates?`)) void approveAll.run(pending); }}>
+            <CheckCheck /> {approveAll.pending ? "Approving…" : `Approve all (${pending.length})`}
+          </Button>
+        ) : undefined} />
       <div className="space-y-4">{pending.length === 0 ? <EmptyState>Nothing to review right now.</EmptyState> : pending.map((p) => card(p, true))}</div>
       {decided.length > 0 && (
         <>

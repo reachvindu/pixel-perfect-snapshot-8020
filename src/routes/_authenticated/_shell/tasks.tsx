@@ -5,10 +5,10 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { statusForListName } from "@/lib/assistant-actions";
-import { ArrowLeft, CalendarDays, KanbanSquare, MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react";
+import { ArrowLeft, CalendarDays, KanbanSquare, MoreHorizontal, Pencil, Plus, Sparkles, Trash2, X } from "lucide-react";
 import { useAction, useMe, useWorkspace } from "@/store/app-store";
 import {
-  createBoard, createList, createTask, deleteBoard, deleteList, deleteTask, renameBoard, renameList, updateBoardDescription, updateTask,
+  createBoard, createList, createTask, deleteBoard, deleteList, deleteTask, renameBoard, renameList, updateBoardDescription, updateTask, updateTaskDescription,
   type TaskInput,
 } from "@/services/api";
 import { Avatar, PageHeader, SampleBadge, StatusPill, EmptyState } from "@/components/shared";
@@ -22,6 +22,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { STATUS_LABELS, STATUS_ORDER, formatDate } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { deadlineState } from "@/lib/deadlines";
 import type { BoardList, Task, TaskStatus } from "@/types";
 
 export const Route = createFileRoute("/_authenticated/_shell/tasks")({
@@ -37,7 +38,7 @@ function BoardsPage() {
   const navigate = useNavigate({ from: Route.fullPath });
   const setBoardId = (id: string | null) => void navigate({ search: id ? { board: id } : {} });
   const [newBoard, setNewBoard] = useState<{ name: string; description: string } | null>(null);
-  const [editing, setEditing] = useState<{ id?: string; draft: TaskInput } | null>(null);
+  const [editing, setEditing] = useState<{ id?: string; draft: TaskInput; notes: string; savedNotes: string } | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -58,6 +59,7 @@ function BoardsPage() {
   const addTask = useAction(createTask);
   const editTask = useAction(updateTask);
   const delTask = useAction(deleteTask);
+  const notesTask = useAction(updateTaskDescription);
 
   const cardsIn = (listId: string) => tasks.filter((t) => t.listId === listId).sort((a, b) => a.position - b.position);
 
@@ -94,13 +96,22 @@ function BoardsPage() {
         listId: list.id, title: "", owner: "", deadline: null, status: "todo", position: cardsIn(list.id).length,
         sourceMeetingId: meetings[0]?.id ?? null, lastMentionedMeetingId: null,
       },
+      notes: "", savedNotes: "",
     });
 
   async function saveTask() {
     if (!editing) return;
     const d = { ...editing.draft, title: editing.draft.title.trim(), owner: editing.draft.owner.trim() };
-    if (editing.id) await editTask.run(editing.id, d);
-    else await addTask.run({ ...d, lastMentionedMeetingId: d.sourceMeetingId });
+    if (editing.id) {
+      await editTask.run(editing.id, d);
+      if (editing.notes !== editing.savedNotes) await notesTask.run(editing.id, editing.notes);
+    } else await addTask.run({ ...d, lastMentionedMeetingId: d.sourceMeetingId, description: editing.notes });
+    setEditing(null);
+  }
+
+  async function saveNotesOnly() {
+    if (!editing?.id) return;
+    await notesTask.run(editing.id, editing.notes);
     setEditing(null);
   }
 
@@ -108,7 +119,7 @@ function BoardsPage() {
     <div className="flex h-full flex-col">
       <PageHeader
         title={board ? board.name : "Boards"}
-        description={board ? (board.description || "Drag cards between lists. Every board is shared with the whole team.") : "Pick a board to open it. Every board is shared with the whole team."}
+        description={board ? `${board.seriesName ? `Meeting series: ${board.seriesName} · ` : ""}${board.description || "Drag cards between lists. Every board is shared with the whole team."}` : "Pick a board to open it. Every board is shared with the whole team."}
         actions={
           <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             {board && <Button variant="ghost" onClick={() => setBoardId(null)}><ArrowLeft /> All boards</Button>}
@@ -150,7 +161,7 @@ function BoardsPage() {
                   <span className="rounded-full bg-muted px-2.5 py-0.5 text-sm font-semibold" aria-label={`${count} cards`}>{count}</span>
                 </div>
                 <p className="line-clamp-2 text-sm text-muted-foreground">{b.description || "No description yet."}</p>
-                <p className="text-xs text-muted-foreground">{listIds.size} lists · {count} cards</p>
+                <p className="text-xs text-muted-foreground">{b.seriesName && <>Series: {b.seriesName} · </>}{listIds.size} lists · {count} cards</p>
                 {b.isSample && <SampleBadge />}
               </button>
             );
@@ -170,7 +181,7 @@ function BoardsPage() {
                 <div className="flex min-h-10 flex-col gap-2">
                   {cards.map((t) => (
                     <DraggableCard key={t.id} id={t.id} disabled={!me.canEdit}>
-                      <TaskCard task={t} dragging={dragId === t.id} onOpen={() => setEditing({ id: t.id, draft: t })} />
+                      <TaskCard task={t} dragging={dragId === t.id} onOpen={() => setEditing({ id: t.id, draft: t, notes: t.description, savedNotes: t.description })} />
                     </DraggableCard>
                   ))}
                 </div>
@@ -211,8 +222,10 @@ function BoardsPage() {
         meetings={meetings}
         canEdit={me.canEdit}
         onChange={(draft) => setEditing((e) => (e ? { ...e, draft } : e))}
+        onNotes={(notes) => setEditing((e) => (e ? { ...e, notes } : e))}
         onClose={() => setEditing(null)}
         onSave={saveTask}
+        onSaveNotes={saveNotesOnly}
         onDelete={editing?.id ? async () => { await delTask.run(editing.id!); setEditing(null); } : undefined}
       />
     </div>
@@ -268,8 +281,14 @@ function TaskCard({ task, dragging, onOpen }: { task: Task; dragging: boolean; o
       className={cn("cursor-pointer select-none rounded-lg border bg-card p-3 shadow-card transition hover:border-primary/40", dragging && "opacity-40")}
     >
       <p className="text-sm font-medium leading-snug">{task.title}</p>
+      {task.description && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{task.description}</p>}
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         <StatusPill status={task.status} />
+        {task.aiAdded && <Badge className="bg-violet-soft text-violet"><Sparkles className="size-3" /> AI</Badge>}
+        {!task.owner.trim() && task.status !== "done" && <Badge className="bg-muted text-muted-foreground">Needs owner</Badge>}
+        {!task.deadline && task.status !== "done" && <Badge className="bg-muted text-muted-foreground">Needs date</Badge>}
+        {deadlineState(task) === "overdue" && <Badge className="bg-destructive/10 text-destructive">Overdue</Badge>}
+        {deadlineState(task) === "soon" && <Badge className="bg-warning-soft text-warning">Due soon</Badge>}
         {task.isSample && <SampleBadge />}
       </div>
       <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
@@ -278,6 +297,10 @@ function TaskCard({ task, dragging, onOpen }: { task: Task; dragging: boolean; o
       </div>
     </div>
   );
+}
+
+function Badge({ className, children }: { className: string; children: ReactNode }) {
+  return <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium", className)}>{children}</span>;
 }
 
 function AddList({ onAdd }: { onAdd: (name: string) => void }) {
@@ -299,14 +322,16 @@ function AddList({ onAdd }: { onAdd: (name: string) => void }) {
   );
 }
 
-function TaskDialog({ editing, lists, meetings, canEdit, onChange, onClose, onSave, onDelete }: {
-  editing: { id?: string; draft: TaskInput } | null;
+function TaskDialog({ editing, lists, meetings, canEdit, onChange, onNotes, onClose, onSave, onSaveNotes, onDelete }: {
+  editing: { id?: string; draft: TaskInput; notes: string; savedNotes: string } | null;
   lists: BoardList[];
   meetings: { id: string; title: string; date: string }[];
   canEdit: boolean;
   onChange: (d: TaskInput) => void;
+  onNotes: (notes: string) => void;
   onClose: () => void;
   onSave: () => void;
+  onSaveNotes: () => void;
   onDelete?: (() => void) | undefined;
 }) {
   const d = editing?.draft;
@@ -352,11 +377,18 @@ function TaskDialog({ editing, lists, meetings, canEdit, onChange, onClose, onSa
             </div>
           </fieldset>
         )}
+        {editing && (
+          <div className="space-y-1.5">
+            <Label htmlFor="t-notes">Description / notes <span className="font-normal text-muted-foreground">(anyone on the team can add, e.g. why it's on hold)</span></Label>
+            <Textarea id="t-notes" rows={3} maxLength={2000} value={editing.notes} onChange={(e) => onNotes(e.target.value)} placeholder="Add context for the team…" />
+          </div>
+        )}
         <DialogFooter className="gap-2 sm:justify-between">
           {canEdit && onDelete ? <Button variant="ghost" className="text-destructive" onClick={onDelete}><Trash2 /> Delete</Button> : <span />}
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose}>{canEdit ? "Cancel" : "Close"}</Button>
             {canEdit && <Button onClick={onSave} disabled={!valid}>Save</Button>}
+            {!canEdit && editing?.id && <Button onClick={onSaveNotes} disabled={editing.notes === editing.savedNotes}>Save notes</Button>}
           </div>
         </DialogFooter>
       </DialogContent>

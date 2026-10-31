@@ -48,13 +48,15 @@ export async function fetchWorkspace() {
     supabase.from("ai_proposals").select("*").order("created_at"),
   ]);
   const meetings: Meeting[] = check(m).map((r) => ({
-    id: r.id, title: r.title, date: r.date, link: r.link, platform: r.platform, transcript: r.transcript, isSample: r.is_sample,
+    id: r.id, title: r.title, date: r.date, link: r.link, platform: r.platform, transcript: r.transcript,
+    seriesName: r.series_name || r.title, processedAt: r.processed_at, isSample: r.is_sample,
   }));
-  const boards: Board[] = check(b).map((r) => ({ id: r.id, name: r.name, description: r.description, isSample: r.is_sample }));
+  const boards: Board[] = check(b).map((r) => ({ id: r.id, name: r.name, description: r.description, seriesName: r.series_name, isSample: r.is_sample }));
   const lists: BoardList[] = check(l).map((r) => ({ id: r.id, boardId: r.board_id, name: r.name, position: r.position }));
   const tasks: Task[] = check(t).map((r) => ({
     id: r.id, listId: r.list_id, title: r.title, owner: r.owner, deadline: r.deadline, status: r.status,
-    position: r.position, sourceMeetingId: r.source_meeting_id, lastMentionedMeetingId: r.last_mentioned_meeting_id, isSample: r.is_sample,
+    position: r.position, sourceMeetingId: r.source_meeting_id, lastMentionedMeetingId: r.last_mentioned_meeting_id,
+    description: r.description, aiAdded: r.ai_added, isSample: r.is_sample,
   }));
   const proposals: AIProposal[] = check(p).map((r) => ({
     id: r.id, taskId: r.task_id, meetingId: r.meeting_id, currentStatus: r.current_status, proposedStatus: r.proposed_status,
@@ -65,8 +67,15 @@ export async function fetchWorkspace() {
 export type Workspace = Awaited<ReturnType<typeof fetchWorkspace>>;
 
 /* meetings */
-export async function createMeeting(m: Omit<Meeting, "id" | "isSample">) {
-  check(await supabase.from("meetings").insert({ title: m.title, date: m.date, link: m.link, platform: m.platform, transcript: m.transcript }));
+export type MeetingInput = Omit<Meeting, "id" | "isSample" | "processedAt" | "seriesName"> & { seriesName?: string };
+/** Saves a meeting (link optional) and makes sure its series has a board. Returns the new meeting id. */
+export async function createMeeting(m: MeetingInput) {
+  const series = m.seriesName?.trim() || m.title.trim();
+  const row = check(await supabase.from("meetings").insert({
+    title: m.title, date: m.date, link: m.link.trim(), platform: m.platform, transcript: m.transcript, series_name: series,
+  }).select("id").single());
+  await ensureSeriesBoard(series);
+  return row.id;
 }
 export async function updateMeetingTranscript(id: string, transcript: string) {
   check(await supabase.from("meetings").update({ transcript }).eq("id", id));
@@ -76,13 +85,25 @@ export async function deleteMeeting(id: string) {
 }
 
 /* boards & lists */
-export async function createBoard(name: string, description = "") {
-  const board = check(await supabase.from("boards").insert({ name, description }).select().single());
+export async function createBoard(name: string, description = "", seriesName = "") {
+  const board = check(await supabase.from("boards").insert({ name, description, series_name: seriesName }).select().single());
   check(await supabase.from("board_lists").insert(
     ["To Do", "In Progress", "Hold", "Completed"].map((n, i) => ({ board_id: board.id, name: n, position: i })),
   ));
   return board.id;
 }
+/** Finds the board for a meeting series (case-insensitive), creating one if needed. Returns its id. */
+export async function ensureSeriesBoard(seriesName: string) {
+  const series = seriesName.trim();
+  const boards = check(await supabase.from("boards").select("id, name, series_name"));
+  const match = boards.find((b) => sameName(b.series_name, series)) ?? boards.find((b) => !b.series_name && sameName(b.name, series));
+  if (match) {
+    if (!match.series_name) check(await supabase.from("boards").update({ series_name: series }).eq("id", match.id));
+    return match.id;
+  }
+  return createBoard(series, `Tasks from the “${series}” meeting series.`, series);
+}
+
 export async function renameBoard(id: string, name: string) {
   check(await supabase.from("boards").update({ name }).eq("id", id));
 }
@@ -103,10 +124,10 @@ export async function deleteList(id: string) {
 }
 
 /* tasks */
-export type TaskInput = Omit<Task, "id" | "isSample">;
-export async function createTask(t: TaskInput) {
+export type TaskInput = Omit<Task, "id" | "isSample" | "description" | "aiAdded">;
+export async function createTask(t: TaskInput & { description?: string }) {
   check(await supabase.from("tasks").insert({
-    list_id: t.listId, title: t.title, owner: t.owner, deadline: t.deadline, status: t.status, position: t.position,
+    description: t.description?.trim() ?? "", list_id: t.listId, title: t.title, owner: t.owner, deadline: t.deadline, status: t.status, position: t.position,
     source_meeting_id: t.sourceMeetingId, last_mentioned_meeting_id: t.lastMentionedMeetingId ?? t.sourceMeetingId,
   }));
 }
@@ -125,11 +146,95 @@ export async function updateTask(id: string, t: Partial<TaskInput>) {
 export async function deleteTask(id: string) {
   check(await supabase.from("tasks").delete().eq("id", id));
 }
+/** Card notes — any approved member may edit these (checked in the database). */
+export async function updateTaskDescription(id: string, description: string) {
+  check(await supabase.rpc("update_task_description", { _task_id: id, _description: description }));
+}
 
 /* AI proposals */
 export async function decideProposal(p: AIProposal, approve: boolean) {
   check(await supabase.from("ai_proposals").update({ decision: approve ? "approved" : "rejected" }).eq("id", p.id));
-  if (approve) await updateTask(p.taskId, { status: p.proposedStatus as TaskStatus, lastMentionedMeetingId: p.meetingId });
+  if (!approve) return;
+  // Also move the card to the list that matches its new status (e.g. done → Completed).
+  const task = check(await supabase.from("tasks").select("list_id").eq("id", p.taskId).single());
+  const current = check(await supabase.from("board_lists").select("board_id").eq("id", task.list_id).single());
+  const lists = check(await supabase.from("board_lists").select("id, name").eq("board_id", current.board_id).order("position"));
+  const target = lists.find((l) => statusForListName(l.name) === p.proposedStatus);
+  const move = target && target.id !== task.list_id
+    ? { listId: target.id, position: check(await supabase.from("tasks").select("id").eq("list_id", target.id)).length }
+    : {};
+  await updateTask(p.taskId, { status: p.proposedStatus as TaskStatus, lastMentionedMeetingId: p.meetingId, ...move });
+}
+export async function approveAllProposals(ps: AIProposal[]) {
+  for (const p of ps) await decideProposal(p, true);
+}
+
+/* ---------- AI meeting processing ---------- */
+type MeetingAnalysis = {
+  new_items: { title: string; owner: string | null; deadline: string | null; evidence: string }[];
+  status_updates: { task_id: string; proposed_status: TaskStatus; evidence: string; confidence: number }[];
+  mentioned_task_ids: string[];
+};
+export type ProcessResult = { boardId: string; boardName: string; added: number; proposed: number; mentioned: number };
+
+/** Reads a meeting's transcript with AI: adds new action items to its series board, proposes status updates, and records which open tasks were discussed. */
+export async function processMeeting(meetingId: string): Promise<ProcessResult> {
+  const meeting = check(await supabase.from("meetings").select("*").eq("id", meetingId).single());
+  if (!meeting.transcript.trim()) throw new Error("This meeting has no transcript yet.");
+  const boardId = await ensureSeriesBoard(meeting.series_name || meeting.title);
+
+  const { data } = await supabase.auth.getSession();
+  const res = await fetch("/api/process-meeting", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session?.access_token ?? ""}` },
+    body: JSON.stringify({ meetingId, boardId }),
+  });
+  const body = (await res.json().catch(() => ({}))) as Partial<MeetingAnalysis> & { error?: string };
+  if (!res.ok) throw new Error(body.error ?? `Reading the transcript failed (${res.status})`);
+
+  const ws = await fetchWorkspace();
+  const board = ws.boards.find((b) => b.id === boardId)!;
+  const boardLists = ws.lists.filter((l) => l.boardId === boardId).sort((a, b) => a.position - b.position);
+  const first = boardLists[0];
+  if (!first) throw new Error(`The board “${board.name}” has no lists.`);
+  const listIds = new Set(boardLists.map((l) => l.id));
+  const open = new Map(ws.tasks.filter((t) => listIds.has(t.listId) && t.status !== "done").map((t) => [t.id, t]));
+  const meetingDate = new Map(ws.meetings.map((m) => [m.id, m.date]));
+
+  const items = (body.new_items ?? []).filter((i) => i.title?.trim());
+  if (items.length) {
+    const start = ws.tasks.filter((t) => t.listId === first.id).length;
+    check(await supabase.from("tasks").insert(items.map((i, n) => ({
+      list_id: first.id, title: i.title.trim().slice(0, 200), owner: i.owner?.trim() ?? "",
+      deadline: i.deadline && /^\d{4}-\d{2}-\d{2}$/.test(i.deadline) ? i.deadline : null,
+      status: statusForListName(first.name) ?? "todo", position: start + n,
+      source_meeting_id: meetingId, last_mentioned_meeting_id: meetingId, ai_added: true,
+    }))));
+  }
+
+  const already = new Set(ws.proposals.filter((p) => p.meetingId === meetingId && p.decision === "pending").map((p) => p.taskId));
+  const updates = (body.status_updates ?? []).filter((u) => {
+    const t = open.get(u.task_id);
+    return t && t.status !== u.proposed_status && !already.has(t.id);
+  });
+  if (updates.length) {
+    check(await supabase.from("ai_proposals").insert(updates.map((u) => ({
+      task_id: u.task_id, meeting_id: meetingId, current_status: open.get(u.task_id)!.status, proposed_status: u.proposed_status,
+      evidence: u.evidence.slice(0, 1000), confidence: Math.min(1, Math.max(0, Number(u.confidence) || 0.5)),
+    }))));
+  }
+
+  // Remember which open tasks this meeting discussed (only move forward in time).
+  const mentioned = [...new Set([...(body.mentioned_task_ids ?? []), ...updates.map((u) => u.task_id)])].filter((id) => {
+    const t = open.get(id);
+    if (!t) return false;
+    const last = t.lastMentionedMeetingId ? meetingDate.get(t.lastMentionedMeetingId) : undefined;
+    return !last || last <= meeting.date;
+  });
+  if (mentioned.length) check(await supabase.from("tasks").update({ last_mentioned_meeting_id: meetingId }).in("id", mentioned));
+
+  check(await supabase.from("meetings").update({ processed_at: new Date().toISOString() }).eq("id", meetingId));
+  return { boardId, boardName: board.name, added: items.length, proposed: updates.length, mentioned: mentioned.length };
 }
 
 /* ---------- admin ---------- */
