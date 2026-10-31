@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, Mic, Square, Volume2, X } from "lucide-react";
+import { AlertTriangle, Loader2, Mic, MicOff, Square, Volume2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useMe, useWorkspace } from "@/store/app-store";
 import { askVoice, runVoiceAction, sendVoiceCommand } from "@/services/api";
@@ -137,7 +137,7 @@ export function VoiceTaskBot({ boardId }: { boardId?: string | undefined }) {
         title={hint}
         className={cn(state === "listening" && "animate-pulse")}
       >
-        {state === "processing" ? <Loader2 className="animate-spin" /> : <Mic />}
+        {state === "processing" ? <Loader2 className="animate-spin" /> : state === "listening" ? <MicOff /> : <Mic />}
       </Button>
       {(bubble || state === "listening") && (
         <div className={cn("absolute right-0 top-full z-40 mt-2 max-h-[60vh] w-80 overflow-y-auto rounded-lg border bg-card p-3 pr-7 text-xs text-card-foreground shadow-md sm:w-96", bubble?.error && "border-destructive/40")}>
@@ -168,7 +168,7 @@ export function VoiceTaskBot({ boardId }: { boardId?: string | undefined }) {
       <Dialog open={pending.length > 0} onOpenChange={(o) => { if (!o) cancel(); }}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Confirm delete</DialogTitle>
+            <DialogTitle className="flex items-center gap-2 text-destructive"><AlertTriangle className="size-5" /> Confirm deletion</DialogTitle>
             <DialogDescription>This can't be undone.</DialogDescription>
           </DialogHeader>
           <ul className="list-disc space-y-1 pl-5 text-sm">
@@ -176,7 +176,7 @@ export function VoiceTaskBot({ boardId }: { boardId?: string | undefined }) {
           </ul>
           <DialogFooter>
             <Button variant="outline" onClick={cancel}>Cancel</Button>
-            <Button variant="destructive" onClick={() => void confirm()}>{pending.some((a) => a.type === "CLEAR") ? "Clear all" : "Delete"}</Button>
+            <Button variant="destructive" onClick={() => void confirm()}>{pending.some((a) => a.type === "CLEAR") ? "Clear all" : "Confirm deletion"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
