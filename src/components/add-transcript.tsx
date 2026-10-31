@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMe, useProcessMeeting, useWorkspace } from "@/store/app-store";
 import { createMeeting } from "@/services/api";
+import { LiveTranscriber } from "@/components/live-transcriber";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +15,7 @@ import { PLATFORM_LABELS } from "@/lib/constants";
 import type { MeetingPlatform } from "@/types";
 
 const today = () => new Date().toISOString().slice(0, 10);
+const append = (prev: string, text: string) => (prev ? `${prev.trimEnd()}\n${text}` : text);
 const blank = () => ({ title: "", date: today(), series: "", link: "", platform: "zoom" as MeetingPlatform, transcript: "" });
 
 /** "+ Add transcript": log any meeting (even unscheduled), link it to a series, and let AI put its tasks on the series board. */
@@ -89,7 +91,8 @@ export function AddTranscriptButton() {
                   <label className="cursor-pointer"><Upload /> Upload .txt<input type="file" accept=".txt,.md,.vtt,.srt,text/plain" className="hidden" onChange={(e) => void readFile(e.target.files?.[0])} /></label>
                 </Button>
               </div>
-              <Textarea id="at-transcript" rows={10} value={form.transcript} onChange={(e) => setForm({ ...form, transcript: e.target.value })} placeholder="Paste the transcript here…" />
+              <LiveTranscriber onText={(t) => setForm((f) => ({ ...f, transcript: append(f.transcript, t) }))} />
+              <Textarea id="at-transcript" rows={8} value={form.transcript} onChange={(e) => setForm({ ...form, transcript: e.target.value })} placeholder="Paste the transcript, upload a .txt file, or record live above…" />
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">

@@ -1,137 +1,131 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { ExternalLink, Mic, Sparkles, Trash2 } from "lucide-react";
+import { ChevronDown, ExternalLink, FileText, KanbanSquare, Mic, MoreHorizontal, RefreshCw, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAction, useMe, useProcessMeeting, useWorkspace } from "@/store/app-store";
-import { createMeeting, deleteMeeting, updateMeetingTranscript } from "@/services/api";
+import { deleteMeeting, updateMeetingTranscript } from "@/services/api";
 import { PageHeader, PlatformPill, SampleBadge, EmptyState } from "@/components/shared";
 import { LiveTranscriber } from "@/components/live-transcriber";
 import { AddTranscriptButton } from "@/components/add-transcript";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { PLATFORM_LABELS, formatDate } from "@/lib/constants";
-import type { Meeting, MeetingPlatform } from "@/types";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { sameName } from "@/lib/assistant-actions";
+import { getForgottenCommitments } from "@/lib/commitments";
+import { formatDate } from "@/lib/constants";
+import { cn } from "@/lib/utils";
+import type { Meeting } from "@/types";
 
 export const Route = createFileRoute("/_authenticated/_shell/meetings")({
-  head: () => ({ meta: [{ title: "Meetings — Planova" }, { name: "description", content: "Log meetings and capture live transcripts." }] }),
+  head: () => ({ meta: [{ title: "Meetings — Planova" }, { name: "description", content: "Meetings grouped by series, with their transcripts." }] }),
   component: MeetingsPage,
 });
 
-const empty = { title: "", date: "", link: "", platform: "zoom" as MeetingPlatform, transcript: "", seriesName: "" };
 const append = (prev: string, text: string) => (prev ? `${prev.trimEnd()}\n${text}` : text);
 
 function MeetingsPage() {
-  const { meetings } = useWorkspace();
+  const { meetings, boards, lists, tasks } = useWorkspace();
   const me = useMe();
-  const add = useAction(createMeeting);
   const del = useAction(deleteMeeting);
-  const [form, setForm] = useState(empty);
-  const [live, setLive] = useState<Meeting | null>(null);
   const processing = useProcessMeeting();
-  const validLink = /^https?:\/\/\S+$/.test(form.link);
-  const canSubmit = form.title.trim() && form.date && (validLink || !form.link.trim());
+  const [live, setLive] = useState<Meeting | null>(null);
+  const [shown, setShown] = useState<string | null>(null);
+
+  // One group per series, most recently active first; meetings newest first inside.
+  const groups = new Map<string, Meeting[]>();
+  for (const m of meetings) {
+    const key = m.seriesName.trim().toLowerCase();
+    groups.set(key, [...(groups.get(key) ?? []), m]);
+  }
+  const series = [...groups.values()]
+    .map((ms) => ms.sort((a, b) => b.date.localeCompare(a.date)))
+    .sort((a, b) => b[0]!.date.localeCompare(a[0]!.date));
+  const forgotten = getForgottenCommitments(tasks, meetings);
 
   return (
-    <div className="mx-auto max-w-7xl">
-      <PageHeader title="Meetings" description="Log a meeting, join it, and capture the transcript live." actions={<AddTranscriptButton />} />
-      <div className="grid gap-6 lg:grid-cols-5">
-        {me.canEdit ? (
-          <form
-            className="space-y-4 rounded-xl border bg-card p-5 shadow-card lg:col-span-2 lg:self-start"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              if (!canSubmit) return;
-              const id = (await add.run({ ...form, title: form.title.trim() })) as string;
-              setForm(empty);
-              if (form.transcript.trim()) void processing.run(id);
-            }}
-          >
-            <h2 className="text-sm font-semibold">New meeting</h2>
-            <div className="space-y-1.5">
-              <Label htmlFor="title">Title</Label>
-              <Input id="title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Weekly product sync" />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="date">Date</Label>
-                <Input id="date" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Platform</Label>
-                <Select value={form.platform} onValueChange={(v) => setForm({ ...form, platform: v as MeetingPlatform })}>
-                  <SelectTrigger><SelectValue>{PLATFORM_LABELS[form.platform]}</SelectValue></SelectTrigger>
-                  <SelectContent>{Object.entries(PLATFORM_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="series">Meeting series <span className="font-normal text-muted-foreground">(optional)</span></Label>
-              <Input id="series" list="series-options" value={form.seriesName} onChange={(e) => setForm({ ...form, seriesName: e.target.value })} placeholder={form.title || "Same as title"} />
-              <datalist id="series-options">{[...new Set(meetings.map((m) => m.seriesName))].map((s) => <option key={s} value={s} />)}</datalist>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="link">Meeting link <span className="font-normal text-muted-foreground">(optional)</span></Label>
-              <Input id="link" value={form.link} onChange={(e) => setForm({ ...form, link: e.target.value })} placeholder="https://…" />
-              {form.link && !validLink && <p className="text-xs text-destructive">Enter a full link starting with https://</p>}
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="transcript">Transcript</Label>
-              <LiveTranscriber onText={(t) => setForm((f) => ({ ...f, transcript: append(f.transcript, t) }))} />
-              <Textarea id="transcript" rows={6} value={form.transcript} onChange={(e) => setForm({ ...form, transcript: e.target.value })} placeholder="Record live above, or paste a transcript…" />
-            </div>
-            <div className="flex gap-2">
-              <Button type="submit" disabled={!canSubmit || add.pending}>Add meeting</Button>
-              {validLink ? (
-                <Button type="button" variant="outline" asChild><a href={form.link} target="_blank" rel="noreferrer"><ExternalLink /> Join meeting</a></Button>
-              ) : (
-                <Button type="button" variant="outline" disabled><ExternalLink /> Join meeting</Button>
-              )}
-            </div>
-          </form>
-        ) : (
-          <div className="rounded-xl border bg-card p-5 text-sm text-muted-foreground shadow-card lg:col-span-2 lg:self-start">
-            You have view-only access. Ask an admin for editor access to add meetings or record transcripts.
-          </div>
-        )}
-
-        <section className="space-y-3 lg:col-span-3">
-          <h2 className="text-sm font-semibold">Meeting history</h2>
-          {meetings.length === 0 && <EmptyState>No meetings yet. Add your first one.</EmptyState>}
-          {meetings.map((m) => (
-            <Collapsible key={m.id} className="rounded-xl border bg-card shadow-card">
-              <div className="flex flex-wrap items-center gap-2 p-4">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2"><span className="truncate font-medium">{m.title}</span>{m.isSample && <SampleBadge />}</div>
-                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    {formatDate(m.date)} <PlatformPill platform={m.platform} />
-                    {m.seriesName && m.seriesName !== m.title && <span>Series: {m.seriesName}</span>}
-                    {m.processedAt && <span className="text-success">✓ Read by AI</span>}
+    <div className="mx-auto max-w-5xl">
+      <PageHeader title="Meetings" description="Meetings grouped by series. Each series feeds its own board." actions={<AddTranscriptButton />} />
+      {series.length === 0 && <EmptyState>No meetings yet. Click “Add transcript” to add your first one.</EmptyState>}
+      <div className="space-y-3">
+        {series.map((ms, i) => {
+          const name = ms[0]!.seriesName;
+          const board = boards.find((b) => sameName(b.seriesName, name)) ?? boards.find((b) => sameName(b.name, name));
+          const listIds = new Set(lists.filter((l) => l.boardId === board?.id).map((l) => l.id));
+          const open = tasks.filter((t) => listIds.has(t.listId) && t.status !== "done").length;
+          const lost = forgotten.filter((f) => listIds.has(f.task.listId)).length;
+          return (
+            <Collapsible key={name} defaultOpen={i === 0} className="group/series rounded-xl border bg-card shadow-card">
+              <div className="flex flex-wrap items-center gap-3 p-4">
+                <CollapsibleTrigger className="flex min-w-0 flex-1 items-center gap-2 text-left">
+                  <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-data-[state=closed]/series:-rotate-90" />
+                  <div className="min-w-0">
+                    <div className="truncate font-semibold">{name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {ms.length} meeting{ms.length === 1 ? "" : "s"} · last on {formatDate(ms[0]!.date)}
+                      {board && <> · {open} open task{open === 1 ? "" : "s"}</>}
+                      {lost > 0 && <span className="text-warning"> · {lost} forgotten</span>}
+                    </div>
                   </div>
-                </div>
-                <CollapsibleTrigger asChild><Button variant="ghost" size="sm" disabled={!m.transcript}>Transcript</Button></CollapsibleTrigger>
-                {me.canEdit && m.transcript.trim() && (
-                  <Button variant={m.processedAt ? "ghost" : "default"} size="sm" disabled={processing.busyId !== null}
-                    onClick={() => { if (!m.processedAt || confirm("Read this transcript with AI again? New tasks it finds will be added.")) void processing.run(m.id); }}>
-                    <Sparkles /> {processing.busyId === m.id ? "Reading…" : m.processedAt ? "Re-process" : "Process with AI"}
+                </CollapsibleTrigger>
+                {board && (
+                  <Button size="sm" variant="outline" asChild>
+                    <Link to="/tasks" search={{ board: board.id }}><KanbanSquare /> Open board</Link>
                   </Button>
-                )}
-                {me.canEdit && <Button variant="outline" size="sm" onClick={() => setLive(m)}><Mic /> Record</Button>}
-                {m.link && <Button size="sm" variant="outline" asChild><a href={m.link} target="_blank" rel="noreferrer"><ExternalLink /> Join</a></Button>}
-                {me.canEdit && (
-                  <Button variant="ghost" size="icon" aria-label="Delete meeting" onClick={() => del.run(m.id)}><Trash2 /></Button>
                 )}
               </div>
               <CollapsibleContent>
-                <pre className="mx-4 mb-4 whitespace-pre-wrap rounded-lg bg-muted p-3 font-mono text-xs text-muted-foreground">{m.transcript}</pre>
+                <ul className="divide-y border-t">
+                  {ms.map((m) => (
+                    <li key={m.id} className="px-4 py-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2"><span className="truncate text-sm font-medium">{m.title}</span>{m.isSample && <SampleBadge />}</div>
+                          <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                            {formatDate(m.date)} <PlatformPill platform={m.platform} />
+                            {m.processedAt ? <span className="text-success">✓ Read by AI</span> : m.transcript.trim() ? <span>Not read yet</span> : <span>No transcript</span>}
+                          </div>
+                        </div>
+                        {me.canEdit && m.transcript.trim() && !m.processedAt ? (
+                          <Button size="sm" disabled={processing.busyId !== null} onClick={() => void processing.run(m.id)}>
+                            <Sparkles /> {processing.busyId === m.id ? "Reading…" : "Process with AI"}
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="ghost" disabled={!m.transcript.trim()} onClick={() => setShown(shown === m.id ? null : m.id)}>
+                            <FileText /> {shown === m.id ? "Hide transcript" : "Transcript"}
+                          </Button>
+                        )}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" aria-label="More actions"><MoreHorizontal /></Button></DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {m.transcript.trim() && <DropdownMenuItem onSelect={() => setShown(shown === m.id ? null : m.id)}><FileText /> {shown === m.id ? "Hide" : "View"} transcript</DropdownMenuItem>}
+                            {me.canEdit && m.processedAt && (
+                              <DropdownMenuItem disabled={processing.busyId !== null}
+                                onSelect={() => { if (confirm("Read this transcript with AI again? New tasks it finds will be added.")) void processing.run(m.id); }}>
+                                <RefreshCw /> Re-process with AI
+                              </DropdownMenuItem>
+                            )}
+                            {me.canEdit && <DropdownMenuItem onSelect={() => setLive(m)}><Mic /> Record / edit transcript</DropdownMenuItem>}
+                            {m.link && <DropdownMenuItem asChild><a href={m.link} target="_blank" rel="noreferrer"><ExternalLink /> Join meeting</a></DropdownMenuItem>}
+                            {me.canEdit && (
+                              <DropdownMenuItem className="text-destructive" onSelect={() => { if (confirm(`Delete “${m.title}”? Its tasks stay on the board.`)) void del.run(m.id); }}>
+                                <Trash2 /> Delete meeting
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                      {shown === m.id && (
+                        <pre className={cn("mt-3 max-h-80 overflow-auto whitespace-pre-wrap rounded-lg bg-muted p-3 font-mono text-xs text-muted-foreground")}>{m.transcript}</pre>
+                      )}
+                    </li>
+                  ))}
+                </ul>
               </CollapsibleContent>
             </Collapsible>
-          ))}
-        </section>
+          );
+        })}
       </div>
       {live && <LiveDialog meeting={live} onClose={() => setLive(null)} />}
     </div>
