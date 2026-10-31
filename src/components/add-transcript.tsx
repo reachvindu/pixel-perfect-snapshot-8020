@@ -16,20 +16,23 @@ import type { MeetingPlatform } from "@/types";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const append = (prev: string, text: string) => (prev ? `${prev.trimEnd()}\n${text}` : text);
-const blank = () => ({ kind: "new" as "new" | "existing", title: "", date: today(), series: "", link: "", platform: "zoom" as MeetingPlatform, transcript: "" });
+const blank = (series = "") => ({ kind: (series ? "existing" : "new") as "new" | "existing", title: series, date: today(), series, link: "", platform: "zoom" as MeetingPlatform, transcript: "" });
 
-/** "+ Add transcript": log any meeting (even unscheduled), link it to a series, and let AI put its tasks on the series board. */
-export function AddTranscriptButton() {
+/** "+ Add transcript": log any meeting (even unscheduled), link it to a series, and let AI put its tasks on the series board.
+ *  Opened from a board, `series` pre-selects that board's series. */
+export function AddTranscriptButton({ series }: { series?: string | undefined } = {}) {
   const me = useMe();
-  const { meetings } = useWorkspace();
+  const { meetings, boards } = useWorkspace();
   const qc = useQueryClient();
   const processing = useProcessMeeting();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState(blank);
+  const [form, setForm] = useState(() => blank(series));
   if (!me.canEdit) return null;
 
-  const seriesNames = [...new Map(meetings.map((m) => [m.seriesName.toLowerCase(), m.seriesName])).values()].filter(Boolean);
+  // Every series with a meeting, plus every board — so a board made with "New board" can take its first transcript.
+  const seriesNames = [...new Map([...meetings.map((m) => m.seriesName), ...boards.map((b) => b.seriesName || b.name)]
+    .filter(Boolean).map((n) => [n.trim().toLowerCase(), n.trim()])).values()].sort((a, b) => a.localeCompare(b));
   const linkOk = !form.link.trim() || /^https?:\/\/\S+$/.test(form.link.trim());
   const canSave = form.title.trim() && (form.kind === "new" || form.series) && form.date && form.transcript.trim() && linkOk && !saving;
 
@@ -48,7 +51,7 @@ export function AddTranscriptButton() {
       });
       await qc.invalidateQueries({ queryKey: ["workspace"] });
       setOpen(false);
-      setForm(blank());
+      setForm(blank(series));
       void processing.run(id);
     } catch (e) {
       toast.error((e as Error).message);

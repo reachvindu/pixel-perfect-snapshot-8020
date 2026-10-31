@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 type Bubble = { heard: string; lines: string[]; error?: boolean };
 
-/** Floating mic on a board: say "add …", "mark … done", "assign … to Priya". Deletes and clear-all always ask first. */
+/** Mic button in the board header: say "add …", "mark … done", "assign … to Priya". Deletes and clear-all always ask first. */
 export function VoiceTaskBot({ boardId, taskCount }: { boardId: string; taskCount: number }) {
   const me = useMe();
   const qc = useQueryClient();
@@ -93,28 +93,30 @@ export function VoiceTaskBot({ boardId, taskCount }: { boardId: string; taskCoun
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-2">
-      {bubble && (
-        <div className={cn("relative max-w-xs rounded-lg border bg-card p-3 pr-7 text-xs text-card-foreground shadow-md", bubble.error && "border-destructive/40")}>
-          <button className="absolute right-1.5 top-1.5 text-muted-foreground hover:text-foreground" aria-label="Close" onClick={() => setBubble(null)}><X className="size-3.5" /></button>
-          <p className="font-semibold">Heard</p>
-          <p className="mb-1.5 text-muted-foreground">“{bubble.heard}”</p>
-          {bubble.lines.map((l, i) => <p key={i} className={cn(bubble.error && "text-destructive")}>{l}</p>)}
-        </div>
-      )}
-      {state === "listening" && <span className="rounded-full bg-card px-2 py-1 text-xs shadow">Listening… tap to stop</span>}
-      <button
+    <div className="relative">
+      <Button
+        variant={state === "listening" ? "destructive" : "outline"}
+        size="icon"
         onClick={listen}
         disabled={state === "processing"}
         aria-label="Voice task command"
         title="Voice commands: “add…”, “mark … done”, “assign … to …”"
-        className={cn(
-          "flex size-12 items-center justify-center rounded-full shadow-lg transition hover:scale-105 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-70",
-          state === "listening" ? "animate-pulse bg-destructive text-destructive-foreground" : "bg-primary text-primary-foreground hover:opacity-90",
-        )}
+        className={cn(state === "listening" && "animate-pulse")}
       >
-        {state === "processing" ? <Loader2 className="size-5 animate-spin" /> : <Mic className="size-5" />}
-      </button>
+        {state === "processing" ? <Loader2 className="animate-spin" /> : <Mic />}
+      </Button>
+      {(bubble || state === "listening") && (
+        <div className={cn("absolute right-0 top-full z-40 mt-2 w-72 rounded-lg border bg-card p-3 pr-7 text-xs text-card-foreground shadow-md", bubble?.error && "border-destructive/40")}>
+          {state === "listening" ? <p className="font-medium">Listening… speak now, or tap the mic to stop.</p> : bubble && (
+            <>
+              <button className="absolute right-1.5 top-1.5 text-muted-foreground hover:text-foreground" aria-label="Close" onClick={() => setBubble(null)}><X className="size-3.5" /></button>
+              <p className="font-semibold">Heard</p>
+              <p className="mb-1.5 text-muted-foreground">“{bubble.heard}”</p>
+              {bubble.lines.map((l, i) => <p key={i} className={cn(bubble.error && "text-destructive")}>{l}</p>)}
+            </>
+          )}
+        </div>
+      )}
 
       <Dialog open={pending.length > 0} onOpenChange={(o) => { if (!o) cancel(); }}>
         <DialogContent className="sm:max-w-sm">

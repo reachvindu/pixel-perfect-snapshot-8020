@@ -15,6 +15,7 @@ import { Avatar, PageHeader, SampleBadge, StatusPill, EmptyState } from "@/compo
 import { Button } from "@/components/ui/button";
 import { GoalPlanner } from "@/components/goal-planner";
 import { VoiceTaskBot } from "@/components/voice-task-bot";
+import { AddTranscriptButton } from "@/components/add-transcript";
 import { AIUpdateReview, hasUnseenUpdate, latestProcessedMeeting } from "@/components/ai-review";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -161,7 +162,9 @@ function BoardsPage() {
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
-            {me.canEdit && <Button onClick={() => setNewBoard({ name: "", description: "" })}><Plus /> New board</Button>}
+            <AddTranscriptButton key={board?.id ?? "all"} series={board ? board.seriesName || board.name : undefined} />
+            {board && <VoiceTaskBot boardId={board.id} taskCount={tasks.filter((t) => boardLists.some((l) => l.id === t.listId)).length} />}
+            {me.canEdit && <Button variant="outline" onClick={() => setNewBoard({ name: "", description: "" })}><Plus /> New board</Button>}
           </div>
         }
       />
@@ -194,7 +197,7 @@ function BoardsPage() {
         <AIUpdateReview board={board} lists={boardLists} tasks={tasks} meetings={meetings} proposals={proposals} canEdit={me.canEdit} />
         <DndContext sensors={sensors} collisionDetection={closestCorners}
           onDragStart={(e) => setDragId(String(e.active.id))} onDragCancel={() => setDragId(null)} onDragEnd={onDragEnd}>
-        <div className="-mx-4 flex flex-1 snap-x items-start gap-3 overflow-x-auto px-4 pb-20 sm:gap-4 md:-mx-8 md:px-8">
+        <div className="-mx-4 flex flex-1 snap-x items-start gap-3 overflow-x-auto px-4 pb-4 sm:gap-4 md:-mx-8 md:px-8">
           {boardLists.map((list) => {
             const cards = cardsIn(list.id);
             return (
@@ -221,7 +224,6 @@ function BoardsPage() {
         </div>
         <DragOverlay>{dragId ? (() => { const t = tasks.find((x) => x.id === dragId); return t ? <div className="w-[min(18rem,80vw)] rotate-2"><TaskCard task={t} dragging={false} onOpen={() => {}} /></div> : null; })() : null}</DragOverlay>
         </DndContext>
-        <VoiceTaskBot boardId={board.id} taskCount={tasks.filter((t) => boardLists.some((l) => l.id === t.listId)).length} />
         </>
       )}
 
