@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   DndContext, DragOverlay, PointerSensor, TouchSensor, KeyboardSensor, closestCorners, useDraggable, useDroppable, useSensor, useSensors,
   type DragEndEvent,
@@ -28,14 +28,18 @@ import type { BoardList, Task, TaskStatus } from "@/types";
 
 export const Route = createFileRoute("/_authenticated/_shell/tasks")({
   head: () => ({ meta: [{ title: "Boards — Planova" }, { name: "description", content: "Trello-style team boards with lists and cards." }] }),
-  validateSearch: (s: Record<string, unknown>): { board?: string } => (typeof s["board"] === "string" ? { board: s["board"] } : {}),
+  validateSearch: (s: Record<string, unknown>): { board?: string; task?: string } => ({
+    ...(typeof s["board"] === "string" ? { board: s["board"] } : {}),
+    ...(typeof s["task"] === "string" ? { task: s["task"] } : {}),
+  }),
   component: BoardsPage,
 });
 
 function BoardsPage() {
   const { boards, lists, tasks, meetings, proposals } = useWorkspace();
   const me = useMe();
-  const boardId = Route.useSearch().board ?? null;
+  const search = Route.useSearch();
+  const boardId = search.board ?? null;
   const navigate = useNavigate({ from: Route.fullPath });
   const setBoardId = (id: string | null) => void navigate({ search: id ? { board: id } : {} });
   const [newBoard, setNewBoard] = useState<{ name: string; description: string } | null>(null);
@@ -48,6 +52,14 @@ function BoardsPage() {
   );
 
   const board = boards.find((b) => b.id === boardId);
+
+  // A link with ?task=… (e.g. from the dashboard) opens that card straight away.
+  useEffect(() => {
+    const t = search.task ? tasks.find((x) => x.id === search.task) : undefined;
+    if (!t) return;
+    setEditing({ id: t.id, draft: t, notes: t.description, savedNotes: t.description });
+    void navigate({ search: boardId ? { board: boardId } : {}, replace: true });
+  }, [search.task]); // eslint-disable-line react-hooks/exhaustive-deps
   const boardLists = board ? lists.filter((l) => l.boardId === board.id) : [];
   // Cards the AI added or moved from the latest meeting it read, highlighted on the board.
   const latest = board ? latestProcessedMeeting(board, meetings) : undefined;
