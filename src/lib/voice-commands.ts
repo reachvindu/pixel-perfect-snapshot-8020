@@ -12,7 +12,8 @@ export interface VoiceAction {
   team?: string;
 }
 
-export type VoiceResult = { actions: VoiceAction[]; confirmation: string; skipped: string[] };
+/** `question` is true when the user asked for information instead of a change — the client then asks for an answer. */
+export type VoiceResult = { actions: VoiceAction[]; confirmation: string; skipped: string[]; question?: boolean };
 export type VoiceTask = { id: string; title: string; status: string; owner: string };
 
 // Preferred model first; the server falls back if one is unavailable or replies with invalid JSON.
@@ -30,6 +31,7 @@ Each command has keys:
   "rename" (change an existing task's title),
   "delete" (remove one task),
   "clear" (remove ALL tasks on this board),
+  "question" (the user is asking for information, a status or a summary — not changing anything),
   "unknown" (not about tasks or impossible to tell).
 - taskName: new task title for add; otherwise the EXACT title of the referenced existing task from the list (match fuzzy/partial references, "the last one", "the deck task", etc.), else null
 - taskNumber: 1-based number of the referenced existing task (resolve "last", "first", "second one" using the list), else null
@@ -58,6 +60,7 @@ export function parseVoiceReply(reply: unknown, tasks: VoiceTask[]): VoiceResult
   const raw: unknown[] = Array.isArray(o.commands) ? o.commands.slice(0, 20) : o.action ? [o] : [];
   const actions: VoiceAction[] = [];
   const skipped: string[] = [];
+  let question = false;
 
   for (const item of raw) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -66,6 +69,7 @@ export function parseVoiceReply(reply: unknown, tasks: VoiceTask[]): VoiceResult
     const name = str(c.taskName);
     const owner = str(c.assignee);
     const team = str(c.team) ?? str(c.department);
+    if (c.action === "question") { question = true; continue; }
     if (!type) { skipped.push("I didn't understand part of that."); continue; }
     if (type === "CLEAR") { actions.push({ type }); continue; }
     if (type === "ADD") {
@@ -89,7 +93,7 @@ export function parseVoiceReply(reply: unknown, tasks: VoiceTask[]): VoiceResult
       actions.push(base);
     }
   }
-  return { actions, skipped, confirmation: str(o.confirmation) ?? (actions.length ? "Your board has been updated." : "Sorry, I didn't catch a task command.") };
+  return { actions, skipped, ...(question && !actions.length ? { question: true } : {}), confirmation: str(o.confirmation) ?? (actions.length ? "Your board has been updated." : "Sorry, I didn't catch a task command.") };
 }
 
 /** One readable line per action, for the confirmation box and toasts. */

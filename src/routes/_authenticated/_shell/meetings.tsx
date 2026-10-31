@@ -7,6 +7,7 @@ import { deleteMeeting, updateMeetingTranscript } from "@/services/api";
 import { PageHeader, PlatformPill, SampleBadge, EmptyState } from "@/components/shared";
 import { LiveTranscriber } from "@/components/live-transcriber";
 import { AddTranscriptButton } from "@/components/add-transcript";
+import { VoiceTaskBot } from "@/components/voice-task-bot";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -52,7 +53,7 @@ function MeetingsPage() {
 
   return (
     <div className="mx-auto max-w-5xl">
-      <PageHeader title="Meetings" description="Meetings grouped by series. Each series feeds its own board." actions={<AddTranscriptButton />} />
+      <PageHeader title="Meetings" description="Meetings grouped by series. Each series feeds its own board." actions={<div className="flex items-center gap-2"><AddTranscriptButton /><VoiceTaskBot /></div>} />
       {allSeries.length > 0 && (
         <div className="relative mb-4">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />

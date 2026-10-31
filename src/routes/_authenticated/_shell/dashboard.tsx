@@ -8,6 +8,7 @@ import { formatDate } from "@/lib/constants";
 import { deadlineState, dueThisWeek } from "@/lib/deadlines";
 import { sameName } from "@/lib/assistant-actions";
 import { AddTranscriptButton } from "@/components/add-transcript";
+import { VoiceTaskBot } from "@/components/voice-task-bot";
 import { hasUnseenUpdate } from "@/components/ai-review";
 import type { Task } from "@/types";
 
@@ -47,7 +48,7 @@ function Dashboard() {
 
   return (
     <div className="mx-auto max-w-7xl">
-      <PageHeader title="Dashboard" description="What your team committed to, and whether it's getting done." actions={<AddTranscriptButton />} />
+      <PageHeader title="Dashboard" description="What your team committed to, and whether it's getting done." actions={<div className="flex items-center gap-2"><AddTranscriptButton /><VoiceTaskBot /></div>} />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatLink to="/meetings"><StatCard label="Total meetings" value={meetings.length} icon={Video} /></StatLink>
         <StatLink to="/tasks"><StatCard label="Open tasks" value={open} icon={ListTodo} tone="violet" /></StatLink>

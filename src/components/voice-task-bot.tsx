@@ -1,50 +1,67 @@
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, Mic, X } from "lucide-react";
+import { Loader2, Mic, Square, Volume2, X } from "lucide-react";
 import { toast } from "sonner";
-import { useMe } from "@/store/app-store";
-import { runVoiceAction, sendVoiceCommand } from "@/services/api";
+import { useMe, useWorkspace } from "@/store/app-store";
+import { askVoice, runVoiceAction, sendVoiceCommand } from "@/services/api";
 import { describeVoiceAction, type VoiceAction } from "@/lib/voice-commands";
+import { meetingDigest } from "@/lib/meeting-digest";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
-type Bubble = { heard: string; lines: string[]; error?: boolean };
+type Bubble = { heard: string; lines: string[]; answer?: string; error?: boolean };
 
-/** Mic button in the board header: say "add …", "mark … done", "assign … to Priya". Deletes and clear-all always ask first. */
-export function VoiceTaskBot({ boardId, taskCount }: { boardId: string; taskCount: number }) {
+/**
+ * Mic button that sits beside "Add transcript".
+ * On a board (editors): commands like "add …", "mark … done", "assign … to Priya" — deletes and clear-all always ask first.
+ * Anywhere else, or any question: answers from the user's meeting series, e.g. "Summarise Hackathon and Design Review".
+ */
+export function VoiceTaskBot({ boardId }: { boardId?: string | undefined }) {
   const me = useMe();
+  const ws = useWorkspace();
   const qc = useQueryClient();
   const [state, setState] = useState<"idle" | "listening" | "processing">("idle");
   const [bubble, setBubble] = useState<Bubble | null>(null);
   const [pending, setPending] = useState<VoiceAction[]>([]);
+  const [speaking, setSpeaking] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recRef = useRef<any>(null);
 
-  useEffect(() => () => recRef.current?.abort?.(), []);
+  useEffect(() => () => { recRef.current?.abort?.(); window.speechSynthesis?.cancel(); }, []);
   useEffect(() => {
-    if (!bubble || state !== "idle") return;
+    if (!bubble || bubble.answer || state !== "idle") return; // answers stay until closed
     const t = setTimeout(() => setBubble(null), 9000);
     return () => clearTimeout(t);
   }, [bubble, state]);
 
-  if (!me.canEdit) return null;
+  const commands = !!boardId && me.canEdit;
+  const listIds = new Set(ws.lists.filter((l) => l.boardId === boardId).map((l) => l.id));
+  const taskCount = ws.tasks.filter((t) => listIds.has(t.listId)).length;
 
   async function run(actions: VoiceAction[]) {
     const done: string[] = [];
     for (const a of actions) {
-      try { await runVoiceAction(boardId, a); done.push(`✓ ${describeVoiceAction(a, taskCount)}`); }
+      try { await runVoiceAction(boardId!, a); done.push(`✓ ${describeVoiceAction(a, taskCount)}`); }
       catch (e) { done.push(`✗ ${describeVoiceAction(a, taskCount)} — ${(e as Error).message}`); }
     }
     await qc.invalidateQueries({ queryKey: ["workspace"] });
     return done;
   }
 
+  async function answer(heard: string) {
+    setBubble({ heard, lines: ["Looking through your meetings…"] });
+    const text = await askVoice(heard, meetingDigest(ws, boardId));
+    setBubble({ heard, lines: [], answer: text });
+  }
+
   async function handle(heard: string) {
     setState("processing");
     setBubble({ heard, lines: ["Working on it…"] });
     try {
-      const r = await sendVoiceCommand(heard, boardId);
+      if (!commands) return await answer(heard);
+      const r = await sendVoiceCommand(heard, boardId!);
+      if (r.question) return await answer(heard);
       const risky = r.actions.filter((a) => a.type === "DELETE" || a.type === "CLEAR");
       const done = await run(r.actions.filter((a) => !risky.includes(a)));
       setBubble({ heard, lines: [r.confirmation, ...done, ...r.skipped, ...(risky.length ? ["Waiting for you to confirm the delete…"] : [])] });
@@ -58,10 +75,11 @@ export function VoiceTaskBot({ boardId, taskCount }: { boardId: string; taskCoun
 
   function listen() {
     if (state === "listening") return recRef.current?.stop();
+    stopSpeaking();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const w = window as any;
     const SpeechRecognition = w.SpeechRecognition || w.webkitSpeechRecognition;
-    if (!SpeechRecognition) return void toast.error("Voice commands need Chrome or Edge.");
+    if (!SpeechRecognition) return void toast.error("Voice needs Chrome or Edge.");
     const rec = new SpeechRecognition();
     rec.continuous = false;
     rec.interimResults = false;
@@ -72,13 +90,25 @@ export function VoiceTaskBot({ boardId, taskCount }: { boardId: string; taskCoun
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     rec.onerror = (e: any) => {
       setState("idle");
-      if (e.error === "not-allowed") toast.error("Please allow microphone access to use voice commands.");
+      if (e.error === "not-allowed") toast.error("Please allow microphone access to use voice.");
       else if (e.error !== "no-speech" && e.error !== "aborted") toast.error(`Voice error: ${e.error}`);
     };
     rec.onend = () => setState((s) => (s === "listening" ? "idle" : s));
     recRef.current = rec;
     rec.start();
   }
+
+  function speak(text: string) {
+    if (!window.speechSynthesis) return void toast.error("This browser can't read aloud.");
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text.replace(/^- /gm, ""));
+    u.onend = () => setSpeaking(false);
+    u.onerror = () => setSpeaking(false);
+    setSpeaking(true);
+    window.speechSynthesis.speak(u);
+  }
+  function stopSpeaking() { window.speechSynthesis?.cancel(); setSpeaking(false); }
+  function close() { stopSpeaking(); setBubble(null); }
 
   function cancel() {
     setPending([]);
@@ -92,6 +122,10 @@ export function VoiceTaskBot({ boardId, taskCount }: { boardId: string; taskCoun
     setBubble((b) => ({ heard: b?.heard ?? "", lines: [...(b?.lines.filter((l) => !l.startsWith("Waiting")) ?? []), ...done] }));
   }
 
+  const hint = commands
+    ? "Voice: “add …”, “mark … done”, “assign … to …”, or ask a question"
+    : "Ask about your meetings, e.g. “Summarise Hackathon and Design Review”";
+
   return (
     <div className="relative">
       <Button
@@ -99,20 +133,33 @@ export function VoiceTaskBot({ boardId, taskCount }: { boardId: string; taskCoun
         size="icon"
         onClick={listen}
         disabled={state === "processing"}
-        aria-label="Voice task command"
-        title="Voice commands: “add…”, “mark … done”, “assign … to …”"
+        aria-label="Voice assistant"
+        title={hint}
         className={cn(state === "listening" && "animate-pulse")}
       >
         {state === "processing" ? <Loader2 className="animate-spin" /> : <Mic />}
       </Button>
       {(bubble || state === "listening") && (
-        <div className={cn("absolute right-0 top-full z-40 mt-2 w-72 rounded-lg border bg-card p-3 pr-7 text-xs text-card-foreground shadow-md", bubble?.error && "border-destructive/40")}>
-          {state === "listening" ? <p className="font-medium">Listening… speak now, or tap the mic to stop.</p> : bubble && (
+        <div className={cn("absolute right-0 top-full z-40 mt-2 max-h-[60vh] w-80 overflow-y-auto rounded-lg border bg-card p-3 pr-7 text-xs text-card-foreground shadow-md sm:w-96", bubble?.error && "border-destructive/40")}>
+          {state === "listening" ? (
             <>
-              <button className="absolute right-1.5 top-1.5 text-muted-foreground hover:text-foreground" aria-label="Close" onClick={() => setBubble(null)}><X className="size-3.5" /></button>
+              <p className="font-medium">Listening… speak now, or tap the mic to stop.</p>
+              <p className="mt-1 text-muted-foreground">{hint}</p>
+            </>
+          ) : bubble && (
+            <>
+              <button className="absolute right-1.5 top-1.5 text-muted-foreground hover:text-foreground" aria-label="Close" onClick={close}><X className="size-3.5" /></button>
               <p className="font-semibold">Heard</p>
               <p className="mb-1.5 text-muted-foreground">“{bubble.heard}”</p>
               {bubble.lines.map((l, i) => <p key={i} className={cn(bubble.error && "text-destructive")}>{l}</p>)}
+              {bubble.answer && (
+                <>
+                  <p className="whitespace-pre-line text-sm leading-relaxed">{bubble.answer}</p>
+                  <Button size="sm" variant="ghost" className="-ml-2 mt-1 h-7" onClick={() => (speaking ? stopSpeaking() : speak(bubble.answer!))}>
+                    {speaking ? <><Square /> Stop</> : <><Volume2 /> Read aloud</>}
+                  </Button>
+                </>
+              )}
             </>
           )}
         </div>

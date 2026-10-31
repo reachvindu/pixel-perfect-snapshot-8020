@@ -16,6 +16,7 @@ import { Route as AuthenticatedShellRouteImport } from './routes/_authenticated/
 import { Route as ApiAssistantRouteImport } from './routes/api/assistant'
 import { Route as ApiProcessMeetingRouteImport } from './routes/api/process-meeting'
 import { Route as ApiTranscribeRouteImport } from './routes/api/transcribe'
+import { Route as ApiVoiceAskRouteImport } from './routes/api/voice-ask'
 import { Route as ApiVoiceCommandRouteImport } from './routes/api/voice-command'
 import { Route as AuthenticatedShellAdminRouteImport } from './routes/_authenticated/_shell/admin'
 import { Route as AuthenticatedShellDashboardRouteImport } from './routes/_authenticated/_shell/dashboard'
@@ -57,6 +58,11 @@ const ApiProcessMeetingRoute = ApiProcessMeetingRouteImport.update({
 const ApiTranscribeRoute = ApiTranscribeRouteImport.update({
   id: '/api/transcribe',
   path: '/api/transcribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiVoiceAskRoute = ApiVoiceAskRouteImport.update({
+  id: '/api/voice-ask',
+  path: '/api/voice-ask',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiVoiceCommandRoute = ApiVoiceCommandRouteImport.update({
@@ -117,6 +123,7 @@ export interface FileRoutesByFullPath {
   '/api/assistant': typeof ApiAssistantRoute
   '/api/process-meeting': typeof ApiProcessMeetingRoute
   '/api/transcribe': typeof ApiTranscribeRoute
+  '/api/voice-ask': typeof ApiVoiceAskRoute
   '/api/voice-command': typeof ApiVoiceCommandRoute
   '/admin': typeof AuthenticatedShellAdminRoute
   '/dashboard': typeof AuthenticatedShellDashboardRoute
@@ -133,6 +140,7 @@ export interface FileRoutesByTo {
   '/api/assistant': typeof ApiAssistantRoute
   '/api/process-meeting': typeof ApiProcessMeetingRoute
   '/api/transcribe': typeof ApiTranscribeRoute
+  '/api/voice-ask': typeof ApiVoiceAskRoute
   '/api/voice-command': typeof ApiVoiceCommandRoute
   '/admin': typeof AuthenticatedShellAdminRoute
   '/dashboard': typeof AuthenticatedShellDashboardRoute
@@ -152,6 +160,7 @@ export interface FileRoutesById {
   '/api/assistant': typeof ApiAssistantRoute
   '/api/process-meeting': typeof ApiProcessMeetingRoute
   '/api/transcribe': typeof ApiTranscribeRoute
+  '/api/voice-ask': typeof ApiVoiceAskRoute
   '/api/voice-command': typeof ApiVoiceCommandRoute
   '/_authenticated/_shell/admin': typeof AuthenticatedShellAdminRoute
   '/_authenticated/_shell/dashboard': typeof AuthenticatedShellDashboardRoute
@@ -170,6 +179,7 @@ export interface FileRouteTypes {
     | '/api/assistant'
     | '/api/process-meeting'
     | '/api/transcribe'
+    | '/api/voice-ask'
     | '/api/voice-command'
     | '/admin'
     | '/dashboard'
@@ -186,6 +196,7 @@ export interface FileRouteTypes {
     | '/api/assistant'
     | '/api/process-meeting'
     | '/api/transcribe'
+    | '/api/voice-ask'
     | '/api/voice-command'
     | '/admin'
     | '/dashboard'
@@ -204,6 +215,7 @@ export interface FileRouteTypes {
     | '/api/assistant'
     | '/api/process-meeting'
     | '/api/transcribe'
+    | '/api/voice-ask'
     | '/api/voice-command'
     | '/_authenticated/_shell/admin'
     | '/_authenticated/_shell/dashboard'
@@ -222,6 +234,7 @@ export interface RootRouteChildren {
   ApiAssistantRoute: typeof ApiAssistantRoute
   ApiProcessMeetingRoute: typeof ApiProcessMeetingRoute
   ApiTranscribeRoute: typeof ApiTranscribeRoute
+  ApiVoiceAskRoute: typeof ApiVoiceAskRoute
   ApiVoiceCommandRoute: typeof ApiVoiceCommandRoute
 }
 
@@ -274,6 +287,13 @@ declare module '@tanstack/react-router' {
       path: '/api/transcribe'
       fullPath: '/api/transcribe'
       preLoaderRoute: typeof ApiTranscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/voice-ask': {
+      id: '/api/voice-ask'
+      path: '/api/voice-ask'
+      fullPath: '/api/voice-ask'
+      preLoaderRoute: typeof ApiVoiceAskRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/voice-command': {
@@ -385,6 +405,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAssistantRoute: ApiAssistantRoute,
   ApiProcessMeetingRoute: ApiProcessMeetingRoute,
   ApiTranscribeRoute: ApiTranscribeRoute,
+  ApiVoiceAskRoute: ApiVoiceAskRoute,
   ApiVoiceCommandRoute: ApiVoiceCommandRoute,
 }
 export const routeTree = rootRouteImport

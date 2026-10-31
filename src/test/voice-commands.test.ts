@@ -34,6 +34,11 @@ describe("parseVoiceReply", () => {
     ]);
   });
 
+  it("flags a pure question so the client asks for an answer", () => {
+    expect(parseVoiceReply({ commands: [{ action: "question" }] }, tasks).question).toBe(true);
+    expect(parseVoiceReply({ commands: [{ action: "question" }, { action: "complete", taskNumber: 1 }] }, tasks).question).toBeUndefined();
+  });
+
   it("never guesses a task that isn't on the board", () => {
     const r = parseVoiceReply({ commands: [{ action: "delete", taskName: "Invoices" }, { action: "delete", taskNumber: 9 }] }, tasks);
     expect(r.actions).toEqual([]);

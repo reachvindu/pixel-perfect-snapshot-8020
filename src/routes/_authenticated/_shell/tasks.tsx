@@ -163,7 +163,7 @@ function BoardsPage() {
               </DropdownMenu>
             )}
             <AddTranscriptButton key={`transcript:${board?.id ?? "all"}`} series={board ? board.seriesName || board.name : undefined} />
-            {board && <VoiceTaskBot boardId={board.id} taskCount={tasks.filter((t) => boardLists.some((l) => l.id === t.listId)).length} />}
+            <VoiceTaskBot key={`voice:${board?.id ?? "all"}`} boardId={board?.id} />
             {me.canEdit && <Button variant="outline" onClick={() => setNewBoard({ name: "", description: "" })}><Plus /> New board</Button>}
           </div>
         }

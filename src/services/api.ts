@@ -476,6 +476,19 @@ export async function sendVoiceCommand(prompt: string, boardId: string): Promise
   return body;
 }
 
+/** Read-only question ("summarise my meetings") answered from a digest of the user's own boards. */
+export async function askVoice(question: string, digest: string): Promise<string> {
+  const { data } = await supabase.auth.getSession();
+  const res = await fetch("/api/voice-ask", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session?.access_token ?? ""}` },
+    body: JSON.stringify({ question, digest }),
+  });
+  const body = (await res.json().catch(() => ({}))) as { answer?: string; error?: string };
+  if (!res.ok) throw new Error(body.error ?? `Voice assistant failed (${res.status})`);
+  return body.answer ?? "";
+}
+
 /** Applies one voice action to this board. New cards go to the first list; done/reopen move the card to the matching list. */
 export async function runVoiceAction(boardId: string, a: VoiceAction) {
   if (a.type === "ADD") return void (await addPlannedTasks(boardId, [{ title: a.taskTitle ?? "New task", owner: a.owner ?? null, deadline: null }]));
